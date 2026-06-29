@@ -226,6 +226,8 @@ def _check_main_done(visit_counts, visited_main, main_task_set, global_condition
 def main():
     global main_done
     rospy.init_node("mission_grid")
+    # 设置虚拟航点参数（CtrlTools 构造函数要求至少一个 ~point_N 参数）
+    rospy.set_param("~point_0", [0.0, 0.0, 0.0])
     uav = ctrl_tools.CtrlTools()
     rospy.loginfo("Waiting for RC unlock...")
     rc_ok = uav.set_rc_to_start()
@@ -333,7 +335,7 @@ def _generate_action_code(action: Dict) -> str:
 """
     elif atype == "set_yaw":
         yaw = action.get("yaw_deg", 90)
-        return f"    uav.set_yaw({yaw})\n    rospy.sleep(1.0)\n"
+        return f"    uav.set_yaw(math.radians({yaw}))\n    rospy.sleep(1.0)\n"
     elif atype == "buzzer":
         audio_id = action.get("audio_id", 1)
         return f"    uav.ctrl_buzzer({audio_id})\n    rospy.sleep(0.5)\n"
@@ -360,8 +362,9 @@ def _generate_shell_script(config: GridConfig) -> str:
     1. Source ROS 和所有工作空间（tools_ws → livox_ws → ctrl_ws）
     2. 设置 LD_PRELOAD（PyTorch 需要）
     3. 按顺序启动 ROS 节点（MAVROS → Livox → 相机）
-    4. 运行生成的 Python 任务脚本
-    5. 退出时清理所有后台进程
+    4. 启动 SLAM 并等待定位稳定（node_manage.py）
+    5. 运行生成的 Python 任务脚本
+    6. 退出时清理所有后台进程
     """
     return f"""#!/bin/bash
 set -euo pipefail
@@ -376,11 +379,16 @@ source /opt/ros/noetic/setup.bash --extend
 export LD_PRELOAD=\"${{LD_PRELOAD:-/home/orangepi/.local/lib/python3.8/site-packages/torch/lib/libgomp-d22c30c5.so.1}}\"
 
 roslaunch mavros apm.launch fcu_url:=udp://:14555@192.168.144.15:14550 &
-sleep 25
+sleep 30
 roslaunch livox_ros_driver2 msg_MID360s.launch &
-sleep 8
+sleep 10
 roslaunch cam_pkg cam_pub.launch &
 sleep 5
+
+# 启动 SLAM 并等待定位稳定
+rosrun competition_pkg node_manage.py &
+sleep 15
+
 python3 \"$SCRIPT_DIR/generated_mission.py\" \"$@\"
 """
 
