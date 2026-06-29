@@ -1,29 +1,11 @@
 # Python
 __pycache__/
-*.py[cod]
-*$py.class
-*.so
-.Python
-build/
-develop-eggs/
-dist/
-downloads/
-eggs/
-.eggs/
-lib/
-lib64/
-parts/
-sdist/
-var/
-wheels/
+*.pyc
+*.pyo
 *.egg-info/
-.installed.cfg
-*.egg
-
-# Virtual Environment
-venv/
-env/
-ENV/
+dist/
+build/
+.eggs/
 
 # IDE
 .vscode/
@@ -35,20 +17,22 @@ ENV/
 .DS_Store
 Thumbs.db
 
-# Project specific
-*.spec
-*.zip
-TIdown/
-TIdown_backups/
-mission_grid_backup_*/
-mission_grid_tauri_backup_*/
+# 环境
+.venv/
+venv/
+env/
 
-# Large binary files
-*.exe
-*.apk
-*.rar
-*.onnx
-*.pt
-*.docx
-*.jpg
-*.png
+# 输出文件
+mission_grid/output/
+*.zip
+
+# 非项目文件
+AGENTS.md
+GIT_BEGINNER_GUIDE.md
+SSH_KEY_GUIDE.md
+TEAMMATE_GUIDE.md
+COLLABORATION_GUIDE.md
+
+# 队友项目和参考文档（应有独立仓库）
+drone_task_builder/
+infomation/
