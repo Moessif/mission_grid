@@ -1,0 +1,88 @@
+{
+  "mission_name": "qr_h_patrol_demo",
+  "tasks": [
+    {
+      "task_id": "env_start",
+      "name": "环境启动",
+      "params": {
+        "use_fast_lio": true,
+        "use_camera": true,
+        "use_mavros": true
+      }
+    },
+    {
+      "task_id": "wait_mapping",
+      "name": "等待建图稳定",
+      "params": {
+        "check_count": 5,
+        "position_error": 0.1,
+        "yaw_error": 2.0
+      }
+    },
+    {
+      "task_id": "takeoff",
+      "name": "起飞",
+      "params": {
+        "altitude": 1.2
+      }
+    },
+    {
+      "task_id": "patrol_area",
+      "name": "区域巡航",
+      "params": {
+        "length": 5.0,
+        "width": 4.0,
+        "altitude": 1.2,
+        "lane_spacing": 1.0,
+        "margin": 0.4,
+        "cruise_speed": 0.3
+      }
+    },
+    {
+      "task_id": "detect_qr",
+      "name": "识别二维码",
+      "params": {
+        "cooldown": 3.0
+      }
+    },
+    {
+      "task_id": "capture_qr",
+      "name": "抓拍二维码",
+      "params": {
+        "save_dir": "/home/orangepi/Desktop/qr_captures"
+      }
+    },
+    {
+      "task_id": "estimate_qr_coord",
+      "name": "计算二维码坐标",
+      "params": {
+        "reference_altitude": 0.5,
+        "reference_half_vertical": 0.3,
+        "camera_forward_offset": 0.0,
+        "camera_left_offset": 0.0,
+        "height_bias": 0.0
+      }
+    },
+    {
+      "task_id": "detect_h",
+      "name": "识别H标识",
+      "params": {
+        "h_cooldown": 2.0
+      }
+    },
+    {
+      "task_id": "land_on_h",
+      "name": "飞去H并降落",
+      "params": {
+        "land_on_h": true
+      }
+    },
+    {
+      "task_id": "return_home",
+      "name": "返航",
+      "params": {
+        "return_home": true
+      }
+    }
+  ]
+}

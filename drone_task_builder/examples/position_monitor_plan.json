@@ -1,0 +1,14 @@
+{
+  "mission_name": "position_monitor_demo",
+  "tasks": [
+    {
+      "task_id": "monitor_position",
+      "name": "位置监控",
+      "params": {
+        "odom_topic": "/mavros/local_position/odom",
+        "rate_hz": 5.0,
+        "output_topic": "/uav_position/status"
+      }
+    }
+  ]
+}

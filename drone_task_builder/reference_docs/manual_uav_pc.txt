@@ -1,0 +1,2925 @@
+激光雷达无人机用户手册
+机载电脑篇
+目录
+一、无人机软硬件概述5
+三、连接方式7
+3.1 查看局域网IP7
+3.2 MobaXterm7
+3.2.1 MobaXterm安装7
+3.2.2 MobaXterm使用9
+3.3 NoMachine11
+3.2.1 NoMachine安装11
+3.2.2 NoMachine使用12
+四、Ubuntu系统入门16
+4.1 Ubuntu文件系统介绍16
+4.1.1 系统目录16
+4.1.2 文件基本属性20
+4.2 终端操作及常见命令的使用23
+4.2.1 终端操作23
+4.2.2 常见终端命令的使用24
+五、ROS平台入门60
+5.1 ROS的基本概念60
+5.1.1 ROS是什么60
+5.1.2 ROS的核心概念61
+5.1.3 常用的ROS命令行工具64
+5.2 ROS的编程应用65
+5.2.1 创建工作空间与功能包65
+5.2.2 发布者publisher的编程实现66
+5.2.3 订阅者subscriber的编程实现72
+5.2.4 话题消息的自定义76
+5.2.5 自定义话题消息的使用80
+5.2.6 服务类型的自定义87
+5.2.7 服务端server和客户端client的编程实现91
+5.2.8 参数的编程应用99
+5.3 ROS的常用组件106
+5.3.1 launch启动文件的使用方法106
+5.3.2 常用可视化工具的使用112
+六、MAVLink115
+6.1 MAVLink概述115
+6.2 MAVLink协议内容117
+6.2.1 版本说明117
+6.2.2 MAVLink v1.0消息包解析120
+6.2.3 MAVLink v2.0消息包解析121
+6.2.4 心跳包机制123
+6.3 MAVLink库的安装123
+6.4 Pymavlink的使用126
+6.4.1 建立连接 -- mavlink_connection()127
+6.4.2 发送消息 -- <message_name>_send()132
+6.4.3 接收消息140
+七、硬件驱动及使用147
+7.1 Unitree L2激光雷达147
+7.1.1 Unitree L2介绍147
+7.1.2 Unitree L2相关SDK及ROS包安装150
+7.1.3 Unitree L2的参数配置及启动150
+7.1.4 Unitree L2数据的应用154
+7.1.5 Unitree L2补充说明157
+7.5 USB相机159
+7.5.1 USB相机介绍159
+7.5.2 USB相机的使用159
+7.5.3 USB相机的内参标定168
+7.5.4 USB相机补充说明178
+八、 主体例程（应用核心）179
+8.1 快速试飞179
+8.2 相关文件介绍181
+8.3 控制功能库介绍182
+8.4 开发流程介绍185
+一、无人机软硬件概述
+1.无人机硬件结构
+在硬件结构上，主要可以分为两部分：
+（1）首先是以飞控为主的控制部分，搭载了光流、激光等模块，可以实现飞机的常规飞行功能；
+（2）另一部分就是机载电脑，搭载了激光雷达，相机等模块，可以为飞机提供定位、识别等功能。
+2.无人机软件功能
+飞行控制系统：通过飞控可实现对无人机的多种模式的控制，包括自稳模式、定高模式、定点模式；
+通讯系统：飞行控制器和机载电脑之间通过网口进行通讯，采用MAVLink通讯协议，方便进行自主任务的布置和实施；
+室内定位：通过机载电脑上搭载的4D激光雷达配合SLAM算法进行室内定位，为飞控提供定位数据，以实现定点飞行的功能；
+图像采集：通过机载电脑搭载的相机模块，进行图像采集，可在机载电脑上部署图像处理的算法进行图像的处理识别，并将结果传出。
+3、机载电脑介绍
+机载电脑使用的是香橙派，系统为ubuntu20.04，配置了ROS noetic 环境，内置激光雷达定位算法，可直接运行，为无人机提供室内定位数据。
+无人机上搭载了一个USB摄像头，可以通过OpenCV直接进行图像获取，也可以使用我们提供的接口进行二次开发。
+4、坐标系
+无人机采用激光雷达进行建图定位，定位算法启动后，无人机初始化所在的位置为原点，机头方向为x轴正方向，机身左侧方向为y轴正方向，地面向上为z轴正方向。
+三、连接方式
+在进行对无人机的开发之前，首先第一步就是完成对无人机的连接，我们可以通过MobaXterm和NoMachine两种软件进行连接。
+3.1 查看局域网IP
+进行连接时，首先第一步就是确认无人机在当前局域网的IP地址。
+首先我们创建一个可连接的局域网络(SSID:ZMA_Q , password: 123456789)，可以使用路由器设置或者用电脑开启一个移动热点。
+然后给无人机供电，使无人机和电脑都在同一局域网下，打开路由器设置或相关的WiFi设备管理就可以看到连接的设备和IP地址，在完成了无人机设备的IP查看后，就可以使用软件进行连接了。
+注：不同的设备设备名可能不一样，注意参考在线时间来确认是否是无人机设备
+3.2 MobaXterm
+3.2.1 MobaXterm安装
+首先在浏览器搜索MobaXterm，进入其官网
+（https://mobaxterm.mobatek.net/download-home-edition.html）
+接着点击“GET MOBAXTERM NOW!”，获取软件
+选择左边的free免费版，点击Download now
+这两个都可以下载，但推荐左边的免安装版，方便使用
+3.2.2 MobaXterm使用
+安装好软件后，我们就可以进行连接了，先打开软件，点击左上角的session,然后点击弹出窗口的SSH，在Remote host内填入之前查到的设备局域网IP，最后点击OK。
+接着输入用户名和密码，输入密码时终端不显示输入，此为正常现象，输入即可。（用户名: orangepi, 密码: orangepi或用户名: zmofly, 密码: zmofly）
+如图所示连接成功，接下来就可以使用命令行对机载电脑进行操作了。
+3.3 NoMachine
+3.2.1 NoMachine安装
+首先在浏览器搜索NoMachine，进入其官网
+(https://www.nomachine.com/)
+点击Download now下载安装即可
+3.2.2 NoMachine使用
+打开软件，在上面的搜索栏内输入之前查到的设备局域网IP，然后点击左侧的<Connect to new host *>建立新连接。
+都点击OK
+输入用户名和密码，可以勾选保存密码，然后点击OK
+远程桌面连接成功后，如下图所示
+四、Ubuntu系统入门
+4.1 Ubuntu文件系统介绍
+Ubuntu是基于 Linux 内核的操作系统，因此它的文件系统遵循类Unix文件系统结构（Filesystem Hierarchy Standard, FHS）。Ubuntu 默认使用 ext4 文件系统，因其稳定性、性能和日志功能。
+4.1.1 系统目录
+Ubuntu 遵循 Filesystem Hierarchy Standard (FHS)，所有路径从根目录 / 开始。
+/
+├── bin/                → 基本用户命令（如 ls, cp）
+├── boot/           → 启动相关文件（内核、grub）
+├── dev/            → 设备文件（如 /dev/sda）
+├── etc/            → 系统配置文件
+├── home/           → 用户主目录（如 /home/alice）
+├── lib/            → 共享库（支持 /bin 和 /sbin）
+├── media/          → 可移动设备挂载点（U盘、CD）
+├── mnt/            → 临时挂载点
+├── opt/            → 第三方软件安装目录
+├── proc/           → 虚拟文件系统，进程与内核信息
+├── root/           → root 用户的家目录
+├── run/            → 运行时数据（如 PID 文件）
+├── sbin/           → 系统管理命令（如 fdisk, ifconfig）
+├── srv/            → 服务数据（如网页、FTP 文件）
+├── sys/            → 虚拟文件系统，设备和驱动信息
+├── tmp/            → 临时文件
+├── usr/            → 用户程序和共享资源
+│   ├── bin/        → 大多数用户命令
+│   ├── lib/        → 应用程序库
+│   ├── local/      → 本地安装软件（推荐）
+│   └── share/      → 架构无关的数据（文档、图标）
+└── var/            → 变量数据（日志、邮件、缓存）
+├── log/        → 系统日志（非常重要）
+├── cache/      → 应用缓存
+└── www/        → Web 服务器内容（如 Apache）
+关键目录：
+目录
+用途
+示例
+/bin
+bin是Binaries (二进制文件) 的缩写, 这个目录存放着最经常使用的命令，所有用户可用
+ls
+cp
+mv
+bash
+/boot
+启动加载器和内核文件
+vmlinuz-*
+initrd.img
+grub/grub.cfg
+/dev
+设备文件（块设备、字符设备）
+/dev/sda（硬盘）
+/dev/tty（终端）
+/etc
+主要配置文件
+/etc/passwd
+/etc/fstab
+/etc/apt/sources.list
+/home
+普通用户的家目录，一般该目录名是以用户的账号命名的
+/home/user/.bashrc
+/lib
+基础共享库，lib是Library(库)的缩写，这个目录里存放着系统最基本的动态连接共享库，其作用类似于Windows里的DLL文件。几乎所有的应用程序都需要用到这些共享库。
+libc.so.6
+内核模块
+/media
+自动挂载可移动设备，linux系统会自动识别一些设备，例如U盘、光驱等等，当识别后，Linux 会把识别的设备挂载到这个目录下。
+/media/usb-drive
+/mnt
+手动挂载文件系统，系统提供该目录是为了让用户临时挂载别的文件系统的，我们可以将光驱挂载在 /mnt/上，然后进入该目录就可以查看光驱里的内容了。
+mount /dev/sdb1 /mnt/temp
+/opt
+第三方商业软件
+Google Chrome
+MATLAB
+/proc
+proc是Processes(进程)的缩写，/proc是一种伪文件系统（也即虚拟文件系统），存储的是当前内核运行状态的一系列特殊文件，这个目录是一个虚拟的目录，它是系统内存的映射，我们可以通过直接访问这个目录来获取系统信息。这个目录的内容不在硬盘上而是在内存里，我们也可以直接修改里面的某些文件，比如可以通过下面的命令来屏蔽主机的ping命令，使别人无法ping你的机器：
+Echo 1 > /proc/sys/net/ipv4/icmp_echo_ignore_all
+/proc/cpuinfo
+/proc/meminfo
+/root
+root用户的家目录（不是 /home/root）
+/root/.ssh/
+/run
+系统运行时数据
+/run/systemd.pid
+/sbin
+系统管理命令（需 root 权限），s 就是Super User的意思，是 Superuser Binaries (超级用户的二进制文件)的缩写，这里存放的是系统管理员使用的系统管理程序。
+fdisk
+iptables
+reboot
+/srv
+服务提供的数据
+/srv/www/
+/srv/ftp/
+/sys
+内核设备模型（sysfs）
+控制硬件参数
+/tmp
+临时文件（重启后清空）
+安全风险注意
+/usr
+用户级程序和数据（静态）
+类似 Windows 的 Program Files
+/var
+动态变化的文件
+日志、数据库、邮件队列
+4.1.2 文件基本属性
+1. 文件属性介绍
+Linux 系统是一种典型的多用户系统，不同的用户处于不同的地位，拥有不同的权限。
+为了保护系统的安全性，Linux系统对不同的用户访问同一文件（包括目录文件）的权限做了不同的规定。
+在Linux中我们通常使用以下两个命令来修改文件或目录的所属用户与权限：
+chown (change owner) ：修改所属用户与组。--- 授权用户
+chmod (change mode) ：修改用户的权限。--- 设置用户权限
+在Ubuntu中，我们可以使用ls -l命令来显示一个文件的属性以及文件所属的用户和组，如图：
+Linux使用rwx权限模型，r代表读取，w代表写入，x代表执行。
+r（读）= 4
+w（写）= 2
+x（执行） = 1
+格式：-rwxr-xr--
+就拿第一个名为“节点图”的文件夹来举例，为什么能直接知道它是文件夹呢，是因为看到了表示该文件属性的一串字符的第一位是“d”，这代表了该文件的类型是目录文件。这串字符的第一位的意义就是表明文件的类型。（- =文件，d =目录，l =链接）。
+后面的2-10位，可以看到大多是由r、w、x组成(r代表可读，w代表可写，x代表可执行)，共九个字符，我们可以把它分成三组，第一组代表该文件所有者的权限，第二组代表所有者同组用户的权限，第三组代表其他用户拥有该文件的权限。rwx是固定位置的，如果拥有该权限就是有字母表示，没有该权限就会用“-”表示。
+第2、5、8位表示读权限，如果用“r”字符表示，则有读权限，如果用“-”字符表示，则没有读权限；第3、6、9位表示写权限，如果用“w”字符表示，则有写权限，如果用“-”字符表示没有写权限；第4、7、10位表示可执行权限，如果用“x”字符表示，则有执行权限，如果用“-”字符表示，则没有执行权限。
+例如咱们这个”节点图”目录文件，文件所有者和同组用户拥有读，写，执行的权限，而其他用户就只有读和执行的权限，没有写入的权限。
+2. 更改文件属性
+（1）chgrp：更改文件属组
+语法：
+chgrp [-R] 属组名 文件名
+参数选项：
+-R：递归更改文件属组，就是在更改某个目录文件的属组时，如果加上-R的参数，那么该目录下的所有文件的属组都会更改。
+（2）chown：更改文件所有者（owner），也可以同时更改文件所属组。
+语法：
+chown [-R] 所有者 文件名
+chown [-R] 所有者:属组名 文件名
+参数选项：
+-R：递归更改文件属组，就是在更改某个目录文件的属组时，如果加上-R的参数，那么该目录下的所有文件的属组都会更改。
+（3）chmod：更改文件9个属性
+Linux文件属性有两种设置方法，一种是数字，一种是符号。
+Linux 文件的基本权限就有九个，分别是 owner/group/others(拥有者/组/其他) 三种身份各有自己的 read/write/execute权限。
+根据前文可知，文件的权限字符为：-rwxrwxrwx，这九个权限是三个三个一组的，其中，我们可以使用数字来代表各个权限，各权限的分数对照表如下：
+r（读）= 4
+w（写）= 2
+x（执行） = 1
+每种身份(owner/group/others)各自的三个权限(r/w/x)分数是需要累加的，例如当权限为：-rwxrwx---，分数则是：
+owner = rwx = 4+2+1 = 7
+group = rwx = 4+2+1 = 7
+others = --- = 0+0+0 = 0
+所以等一下我们设定权限的变更时，该文件的权限数字就是 770。
+变更权限的指令 chmod 的语法如下的：
+chmod [-R] xyz 文件或目录
+选项与参数：
+xyz : 就是刚刚提到的数字类型的权限属性，为rwx 属性数值的相加。
+-R : 进行递归(recursive)的持续变更，以及连同次目录下的所有文件都会变更
+举例来说，如果要将.bashrc这个文件所有的权限都设定启用，那么命令如下：
+ls -al .bashrc
+chmod 777 .bashrc
+ls -al .bashrc
+4.2 终端操作及常见命令的使用
+4.2.1 终端操作
+终端操作是我们使用ubuntu系统时，最需要学习的基础。不是所有的Linux系统都会提供桌面显示，而且多数时候使用终端操作ubuntu系统更为便捷。终端操作其实就是命令行操作，我们直接通过命令行输入指令来对ubuntu系统进行操作。
+例如显示文件(ls)：
+我们就可以快速的看到当前目录下的文件都有哪些，还有前面提到的修改文件权限，也是命令行作用的一种。下面我们先简单体验一下终端操作。
+首先，我们需要打开一个命令行，使用nomachine的远程桌面或者使用mobaxterm的终端都可以。
+如图所示，我们可以看到命令行中出现了一行字符“zmofly@ubuntu:~$”，@前面的“zmofly”是当前用户的名字，@后面的“ubuntu”是设备的名字，“:”和“$”中间的内容为当前命令行所在的路径，“$”表示当前是普通用户，我们可以在光标处输入我们需要的命令，比如输入命令“ls”，命令“ls”是打印出当前目录下的所有可显示的文件。
+4.2.2 常见终端命令的使用
+1. 查询当前目录下的内容--ls
+ls（英文全拼： list directory contents）命令用于显示指定工作目录下的内容（列出目前工作目录所含的文件及子目录)。
+语法：
+ls [-alrtAFR] [name...]
+参数：
+参数
+说明
+-a 或 --all
+显示所有文件（包括以 . 开头的隐藏文件）。
+-A 或 --almost-all
+显示除. 和 .. 外的所有文件（包括隐藏文件）
+-l（是字母L）
+以长格式（详细信息）列出文件（权限、所有者、大小、修改时间等）
+-h 或 --human-readable
+与 -l 一起使用时，以人类可读的格式显示文件大小（如 KB、MB）
+-t
+按修改时间排序（最新优先）
+-r 或 --reverse
+反向排序（配合 -t、-S 等使用）。
+-S
+按文件大小排序（大文件优先）。
+-R 或 --recursive
+递归列出子目录内容。
+-F 或 --classify
+在文件名后附加标识符（如 / 表示目录，* 表示可执行文件）。
+--color
+彩色输出（通常默认启用，--color=auto）。
+-i 或 --inode
+显示文件的 inode 编号。
+-n 或 --numeric-uid-gid
+以数字形式显示 UID 和 GID（替代用户名和组名）
+-d 或 --directory
+仅显示目录本身，而非其内容（常用于配合 -l）
+-1（是数字一）
+每行只显示一个文件，默认在终端宽度不足时自动启用
+-m
+以逗号分隔的列表形式显示文件。
+-Q 或 --quote-name
+用引号括住文件名（适用于含空格的文件名）
+--group-directories-first
+先显示目录，后显示文件
+--time-style=<格式>
+自定义时间显示格式（如 +%Y-%m-%d）
+示例
+查看当前目录下的所有文件（包括隐藏文件）
+ls -a
+查看当前系统下的所有video设备
+ls /dev/video*
+2. 目录跳转--cd
+cd（英文全拼：change directory）命令用于改变当前工作目录的命令，切换到指定的路径。
+若目录名称省略，则变换至使用者的 home 目录 (也就是刚 login 时所在的目录)。
+另外，~ 也表示为 home 目录的意思， . 则是表示目前所在的目录， .. 则表示目前目录位置的上一层目录。
+语法：
+cd [dirName]
+参数：
+dirName：要切换的目标目录，可以是相对路径或绝对路径。
+换到绝对路径：指定完整的目录路径来切换到目标目录。
+cd /path/to/directory
+切换到相对路径：指定相对于当前目录的路径来切换到目标目录。
+cd relative/path/to/directory
+示例：
+切换到指定目录(jetson-inference)
+cd jetson-inference/
+切换到家目录(home)
+cd ~
+切换到上级目录
+cd ..
+3. 查看当前所在目录--pwd
+pwd（英文全拼：print work directory） 命令用于显示当前用户所在的工作目录的完整路径。
+执行 pwd 指令可立刻得知您目前所在的工作目录的绝对路径名称。
+语法：
+pwd [--help] [--version]
+参数：
+选项
+说明
+-L
+显示逻辑路径（默认行为），解析符号链接
+-P
+显示物理路径，不解析符号链接
+--help
+显示帮助信息
+--version
+显示版本信息
+示例：
+4. 创建目录--mkdir
+该命令用于创建目录。
+语法：
+mkdir [-p] dirName
+参数：
+-p 确保目录名称存在，不存在的就建一个。
+示例：
+5.复制文件--cp
+cp（英文全拼：copy file）命令主要用于复制文件或目录。
+通过 cp 命令，用户可以将文件或目录从一个位置复制到另一个位置，同时可以选择保留原文件的属性（如权限、时间戳等）。
+语法：
+cp [options] source dest
+source(源文件)，表示要复制的文件或目录的路径
+dest(目标文件)，表示复制后的文件或目录的路径
+参数：
+选项
+说明
+-r 或 -R
+递归复制目录及其内容（用于复制目录）
+-i
+交互模式，覆盖前提示用户确认
+-f
+强制复制，覆盖目标文件而不提示
+-v
+显示详细的复制过程（verbose）
+-p
+保留文件的原始属性（如权限、时间戳等）
+-a
+归档模式，等同于 -dpR，保留所有文件属性和递归复制目录
+-u
+仅当源文件比目标文件新时才复制（更新模式）
+-l
+创建硬链接而不是复制文件
+-s
+创建符号链接（软链接）而不是复制文件
+示例：
+复制文件到目标目录
+cp file.txt /path/to/destination/
+复制文件并重命名
+cp file.txt /path/to/destination/newfile.txt
+6. 移动或重命名文件--mv
+mv（英文全拼：move file）命令用来为文件或目录改名、或将文件或目录移入其它位置。
+语法：
+选项
+说明
+-b
+当目标文件或目录存在时，在执行覆盖前，会为其创建一个备份
+-i
+如果指定移动的源目录或文件与目标的目录或文件同名，则会先询问是否覆盖旧文件，输入 y 表示直接覆盖，输入 n 表示取消该操作
+-f
+如果指定移动的源目录或文件与目标的目录或文件同名，不会询问，直接覆盖旧文件
+-n
+不要覆盖任何已存在的文件或目录
+-u
+当源文件比目标文件新或者目标文件不存在时，才执行移动操作
+示例：
+将源文件名source_file改为目标文件名dest_file
+mv source_file(文件) dest_file(文件)
+将文件source_file移动到目标目录dest_directory中
+mv source_file(文件) dest_directory(目录)
+目录名dest_directory已存在，将source_directory移动到目录名 dest_directory中；目录名dest_directory不存在则source_directory改名为目录名 dest_directory
+mv source_directory(目录) dest_directory(目录)
+7. 文档内容查看--cat
+cat（英文全拼：concatenate）命令用于连接文件并打印到标准输出设备上，它的主要作用是用于查看和连接文件。
+显示文件内容：cat filename会将指定文件的内容输出到终端上。
+连接文件：cat file1 file2 > combined_file可以将file1和file2的内容连接起来，并将结果输出到combined_file中。
+创建文件：可以使用cat命令来创建文件，例如cat > filename，然后你可以输入文本，按Ctrl+D来保存并退出。
+在终端显示文件：可以将cat与管道（|）结合使用，用来显示其他命令的输出，例如 ls -l | cat 会将ls -l的输出通过cat打印到终端上。
+语法：
+cat [选项] [文件]
+选项
+说明
+-n
+显示行号，会在输出的每一行前加上行号
+-b
+显示行号，但只对非空行进行编号。
+-s
+压缩连续的空行，只显示一个空行。
+-E
+在每一行的末尾显示$符号。
+-T
+将 Tab 字符显示为^I。
+-v
+显示一些非打印字符。
+示例：
+查看文件内容
+cat filename
+连接文件，将 file1 和 file2 的内容合并到 file3 中。
+cat file1 file2 > file3
+显示文件 filename 的最后 10 行
+cat filename | tail -n 10
+清空 /etc/test.txt 文档内容
+cat /dev/null > /etc/test.txt
+8. 以管理员身份执行--sudo
+sudo 全称为 Super User DO，允许授权用户以其他用户（通常是 root 用户）的身份执行命令，也就是说，经由 sudo 所执行的指令就好像是 root 亲自执行。
+语法：
+sudo  [选项]  命令
+选项
+说明
+-i
+模拟初始登录，加载目标用户的环境
+-s
+运行shell
+-u
+user: 以指定用户身份运行
+-l
+列出当前用户可执行的sudo命令
+-v
+验证用户凭据（延长sudo会话）
+-k
+撤销sudo凭据缓存
+示例：
+在需要权限的时候，以root权限执行
+sudo mkdir /etc/test     # 以root权限在/etc路径下创建test文件夹
+9.删除文件或目录--rm
+rm（英文全拼：remove）命令用于删除一个文件或者目录。
+文件一旦通过rm命令删除，则无法恢复，所以必须格外小心地使用该命令。
+语法：
+rm [options] name...
+选项
+说明
+-i
+删除前逐一询问确认
+-f
+即使原档案属性设为唯读，亦直接删除，无需逐一确认
+-r
+将目录及以下之档案亦逐一删除
+示例：
+删除文件可以直接使用rm命令，若删除目录则必须配合选项"-r"，例如：
+# rm test.txt
+rm：是否删除 一般文件 "test.txt"? y
+# rm homework
+rm: 无法删除目录"homework": 是一个目录
+# rm -r homework
+rm：是否删除 目录 "homework"? y
+删除当前目录下的所有文件及目录
+rm -r *
+10. 文本编辑器--vi/vim
+所有的 Unix Like 系统都会内建 vi 文书编辑器，其他的文书编辑器则不一定会存在。
+但是目前我们使用比较多的是 vim 编辑器。
+vim 具有程序编辑的能力，可以主动的以字体颜色辨别语法的正确性，方便程序设计。
+vim 键盘图
+vi/vim 的使用:
+基本上 vi/vim 共分为三种模式，命令模式（Command Mode）、输入模式（Insert Mode）和命令行模式（Command-Line Mode）。
+·命令模式
+用户刚刚启动 vi/vim，便进入了命令模式。
+此状态下敲击键盘动作会被 Vim 识别为命令，而非输入字符，比如我们此时按下 i，并不会输入一个字符i，i 被当作了一个命令。
+以下是普通模式常用的几个命令：
+按键
+说明
+i
+切换到输入模式，在光标当前位置开始输入文本
+x
+删除当前光标所在处的字符
+:
+切换到底线命令模式，以在最底一行输入命令
+a
+进入插入模式，在光标下一个位置开始输入文本
+o
+在当前行的下方插入一个新行，并进入插入模式
+0
+在当前行的上方插入一个新行，并进入插入模式
+dd
+剪切当前行
+yy
+复制当前行
+p
+粘贴剪贴板内容到光标下方
+P
+粘贴剪贴板内容到光标上方
+u
+撤销上一次操作
+Ctrl + r
+重做上一次撤销的操作
+:w
+保存文件
+:q
+退出Vim编辑器
+:q!
+强制退出Vim编辑器，不保存修改
+·输入模式
+在命令模式下按下 i 就进入了输入模式，使用 Esc 键可以返回到命令模式。
+在输入模式中可以使用以下按键：
+按键
+说明
+字符按键以及Shift组合
+输入字符
+ENTER
+回车键，换行
+Backspace
+退格键，删除光标前一个字符
+DEL
+删除键，删除光标后的一个字符
+方向键
+在文本中移动光标
+HOME/END
+移动光标到行首/行尾
+Page Up/
+Page Down
+上/下翻页
+Insert
+切换光标为输入/替换模式，光标将变成竖线/下划线
+Esc
+退出输入模式，切换到命令模式
+·底线命令模式
+在命令模式下按下 : (英文冒号) 就进入了底线命令模式。
+底线命令模式可以输入单个或多个字符的命令，可用的命令非常多。
+在底线命令模式中，基本的命令有：
+按键
+说明
+:w
+保存文件
+:q
+退出Vim编辑器
+:wq
+保存文件并退出Vim编辑器
+:q!
+强制退出Vim编辑器，不保存修改
+按下Esc键可随时退出底线命令模式
+示例：
+·使用 vi/vim 进入一般模式
+如果你想要使用 vi 来建立一个名为 runoob.txt 的文件时，你可以这样做：
+直接输入vi 文件名就能够进入 vi 的一般模式了。请注意，记得 vi 后面一定要加文件名，不管该文件存在与否！
+vim runoob.txt
+·按下 i 进入输入模式(也称为编辑模式)，开始编辑文字
+在一般模式之中，只要按下 i, o, a 等字符就可以进入输入模式了！
+在编辑模式当中，你可以发现在左下角状态栏中会出现 –INSERT- 的字样，那就是可以输入任意字符的提示。
+这个时候，键盘上除了 Esc 这个按键之外，其他的按键都可以视作为一般的输入按钮了，所以你可以进行任何的编辑。
+·按下 ESC 按钮回到一般模式
+如果已经按照上面的样式完成了对文件的编辑，那么该要如何退出呢，答案是按下 Esc 这个按钮即可。你就会发现画面左下角的 – INSERT – 不见了。
+在一般模式中按下 :wq 储存后离开 vi
+OK，我们要存档了，存盘并离开的指令很简单，输入 :wq 即可保存离开。
+按键说明：
+除了上面简易范例的 i, Esc, :wq 之外，其实 vim 还有非常多的按键可以使用。
+第一部分：一般模式可用的光标移动、复制粘贴、搜索替换等
+移动光标的方法
+h 或 向左箭头键(←)
+光标向左移动一个字符
+j 或 向下箭头键(↓)
+光标向下移动一个字符
+k 或 向上箭头键(↑)
+光标向上移动一个字符
+l 或 向右箭头键(→)
+光标向右移动一个字符
+如果你将右手放在键盘上的话，你会发现 hjkl 是排列在一起的，因此可以使用这四个按钮来移动光标。 如果想要进行多次移动的话，例如向下移动 30 行，可以使用 "30j" 或 "30↓" 的组合按键， 亦即加上想要进行的次数(数字)后，按下动作即可！
+[Ctrl] + [f]
+屏幕『向下』移动一页，相当于 [Page Down]按键 (常用)
+[Ctrl] + [b]
+屏幕『向上』移动一页，相当于 [Page Up] 按键 (常用)
+[Ctrl] + [d]
+屏幕『向下』移动半页
+[Ctrl] + [u]
+屏幕『向上』移动半页
++
+光标移动到非空格符的下一行
+-
+光标移动到非空格符的上一行
+n<space>
+那个 n 表示『数字』，例如 20 。按下数字后再按空格键，光标会向右移动这一行的 n 个字符。例如 20<space> 则光标会向后面移动 20 个字符距离。
+0 或功能键[Home]
+这是数字『 0 』：移动到这一行的最前面字符处 (常用)
+$ 或功能键[End]
+移动到这一行的最后面字符处(常用)
+H
+光标移动到这个屏幕的最上方那一行的第一个字符
+M
+光标移动到这个屏幕的中央那一行的第一个字符
+L
+光标移动到这个屏幕的最下方那一行的第一个字符
+G
+移动到这个档案的最后一行(常用)
+nG
+n 为数字。移动到这个档案的第 n 行。例如 20G 则会移动到这个档案的第 20 行(可配合 :set nu)
+gg
+移动到这个档案的第一行，相当于 1G 啊！ (常用)
+n<Enter>
+n 为数字。光标向下移动 n 行(常用)
+搜索替换
+/word
+向光标之下寻找一个名称为 word 的字符串。例如要在档案内搜寻 vbird 这个字符串，就输入 /vbird 即可！ (常用)
+?word
+向光标之上寻找一个字符串名称为 word 的字符串。
+n
+这个 n 是英文按键。代表重复前一个搜寻的动作。举例来说， 如果刚刚我们执行 /vbird 去向下搜寻 vbird 这个字符串，则按下 n 后，会向下继续搜寻下一个名称为 vbird 的字符串。如果是执行 ?vbird 的话，那么按下 n 则会向上继续搜寻名称为 vbird 的字符串！
+N
+这个 N 是英文按键。与 n 刚好相反，为『反向』进行前一个搜寻动作。 例如 /vbird 后，按下 N 则表示『向上』搜寻 vbird 。
+使用 /word 配合 n 及 N 是非常有帮助的！可以让你重复的找到一些你搜寻的关键词！
+:n1,n2s/word1/word2/g
+n1 与 n2 为数字。在第 n1 与 n2 行之间寻找 word1 这个字符串，并将该字符串取代为 word2 ！举例来说，在 100 到 200 行之间搜寻 vbird 并取代为 VBIRD 则：『:100,200s/vbird/VBIRD/g』。(常用)
+:1,$s/word1/word2/g 或 :%s/word1/word2/g
+从第一行到最后一行寻找 word1 字符串，并将该字符串取代为 word2 ！(常用)
+:1,$s/word1/word2/gc 或 :%s/word1/word2/gc
+从第一行到最后一行寻找 word1 字符串，并将该字符串取代为 word2 ！且在取代前显示提示字符给用户确认 (confirm) 是否需要取代！(常用)
+删除、复制与贴上
+x, X
+在一行字当中，x 为向后删除一个字符 (相当于 [del] 按键)， X 为向前删除一个字符(相当于 [backspace] 亦即是退格键) (常用)
+nx
+n 为数字，连续向后删除 n 个字符。举例来说，我要连续删除 10 个字符， 『10x』。
+dd
+剪切游标所在的那一整行(常用)，用 p/P 可以粘贴。
+ndd
+n 为数字。剪切光标所在的向下 n 行，例如 20dd 则是剪切 20 行(常用)，用 p/P 可以粘贴。
+d1G
+删除光标所在到第一行的所有数据
+dG
+删除光标所在到最后一行的所有数据
+d$
+删除游标所在处，到该行的最后一个字符
+d0
+那个是数字的 0 ，删除游标所在处，到该行的最前面一个字符
+yy
+复制游标所在的那一行(常用)
+nyy
+n 为数字。复制光标所在的向下 n 行，例如 20yy 则是复制 20 行(常用)
+y1G
+复制游标所在行到第一行的所有数据
+yG
+复制游标所在行到最后一行的所有数据
+y0
+复制光标所在的那个字符到该行行首的所有数据
+y$
+复制光标所在的那个字符到该行行尾的所有数据
+p, P
+p 为将已复制的数据在光标下一行贴上，P 则为贴在游标上一行！ 举例来说，我目前光标在第 20 行，且已经复制了 10 行数据。则按下 p 后， 那 10 行数据会贴在原本的 20 行之后，亦即由 21 行开始贴。但如果是按下 P 呢？ 那么原本的第 20 行会被推到变成 30 行。 (常用)
+J
+将光标所在行与下一行的数据结合成同一行
+c
+重复删除多个数据，例如向下删除 10 行，[ 10cj ]
+u
+复原前一个动作。(常用)
+[Ctrl]+r
+重做上一个动作。(常用)
+第二部分：一般模式切换到编辑模式的可用的按钮说明
+进入输入或取代的编辑模式
+i, I
+进入输入模式(Insert mode)：i 为『从目前光标所在处输入』， I 为『在目前所在行的第一个非空格符处开始输入』。 (常用)
+a, A
+进入输入模式(Insert mode)：a 为『从目前光标所在的下一个字符处开始输入』， A 为『从光标所在行的最后一个字符处开始输入』。(常用)
+o, O
+进入输入模式(Insert mode)：这是英文字母 o 的大小写。o 为在目前光标所在的下一行处输入新的一行； O 为在目前光标所在的上一行处输入新的一行！(常用)
+r, R
+进入取代模式(Replace mode)：r 只会取代光标所在的那一个字符一次；R会一直取代光标所在的文字，直到按下 ESC 为止；(常用)
+上面这些按键中，在 vi 画面的左下角处会出现『--INSERT--』或『--REPLACE--』的字样。 由名称就知道该动作了吧！！特别注意的是，我们上面也提过了，你想要在档案里面输入字符时， 一定要在左下角处看到 INSERT 或 REPLACE 才能输入喔！
+[Esc]
+退出编辑模式，回到一般模式中(常用)
+第三部分：一般模式切换到指令行模式的可用的按钮说明
+指令行的储存、离开等指令
+:w
+将编辑的数据写入硬盘档案中(常用)
+:w!
+若文件属性为『只读』时，强制写入该档案。不过，到底能不能写入， 还是跟你对该档案的档案权限有关啊！
+:q
+离开 vi (常用)
+:q!
+若曾修改过档案，又不想储存，使用 ! 为强制离开不储存档案。
+注意一下啊，那个惊叹号 (!) 在 vi 当中，常常具有『强制』的意思～
+:wq
+储存后离开，若为 :wq! 则为强制储存后离开 (常用)
+ZZ
+这是大写的 Z 喔！如果修改过，保存当前文件，然后退出！效果等同于(保存并退出)
+ZQ
+不保存，强制退出。效果等同于 :q!。
+:w [filename]
+将编辑的数据储存成另一个档案（类似另存新档）
+:r [filename]
+在编辑的数据中，读入另一个档案的数据。亦即将 『filename』 这个档案内容加到游标所在行后面
+:n1,n2 w [filename]
+将 n1 到 n2 的内容储存成 filename 这个档案。
+:! command
+暂时离开 vi 到指令行模式下执行 command 的显示结果！例如『:! ls /home』即可在 vi 当中察看 /home 底下以 ls 输出的档案信息！
+vim 环境的变更
+:set nu
+显示行号，设定之后，会在每一行的前缀显示该行的行号
+:set nonu
+与 set nu 相反，为取消行号！
+11. ping命令
+Linux ping 命令用于检测与另一个主机之间的网络连接。
+ping 命令通过向目标主机发送数据包并等待回应，可以测量网络响应时间和丢包率。
+执行 ping 指令会使用 ICMP（Internet Control Message Protocol） 传输协议，发出要求回应的信息，若远端主机的网络功能没有问题，就会回应该信息，因而得知该主机运作正常。
+语法：
+ping [选项] [目标主机/IP地址]
+选项
+说明
+-c
+指定发送的数据包数量，例如 -c 4 表示发送 4 个数据包
+-i
+指定每次发送数据包的间隔时间（秒），例如 -i 0.5 表示每 0.5 秒发送一次
+-w
+设置发送数据包的等待时间上限，超出该时间后自动停止，例如 -w 5 表示等待 5 秒
+-s
+指定每个数据包的大小（字节），默认是 56 字节
+-t
+设置数据包的生存时间（TTL），指定路由跳数
+-q
+安静模式，只显示开始和结束的统计数据，不显示每个数据包的详细信息
+-f
+疯狂模式，快速发送数据包，用于测试网络承载能力，需谨慎使用
+-1
+指定一次发送的数据包数量，通常用于负载测试
+-v
+显示详细输出信息，用于调试
+-4
+强制使用 IPv4 协议
+-6
+强制使用 IPv6 协议
+示例：
+检测是否与主机连通
+ping 192.168.3.1    # 退出时需要，手动按下Ctrl + c
+限制发送数据包数量
+ping -c 2 192.168.3.1      # 收到两次包后，自动退出
+设置数据包间隔时间：-i 3 发送周期为3s
+ping -i 3 192.168.3.1
+指定数据包大小：设置数据包大小为128字节，适用于检查大数据传输时的稳定性
+ping -s 128 192.168.3.1
+设置网络超时：测试时间限制为 10 秒，适合在网络环境不确定的情况下测试连通性。
+ping -w 10 192.168.3.1
+注意事项：
+ping 使用 ICMP 协议，有些防火墙可能会阻止 ICMP 数据包，这样会导致 ping 命令无法正常工作。
+疯狂模式（-f 参数）发包速度快，建议在安全的网络环境下使用，否则可能被视为攻击行为。
+使用 ping 命令，可以快速检测网络连接状态、排查网络故障，是每位网络管理人员必备的工具。
+12. ip 命令
+Linux ip 命令与 ifconfig 命令类似，但比 ifconfig 命令更加强大，主要功能是用于显示或设置网络设备。
+ip 命令是 Linux 加强版的的网络配置工具，用于代替 ifconfig 命令。
+语法：
+ip [ OPTIONS ] OBJECT { COMMAND | help }
+OBJECT 为常用对象，值可以是以下几种：
+OBJECT={ link | addr | addrlabel | route | rule | neigh | ntable | tunnel | maddr | mroute | mrule | monitor | xfrm | token }
+常用对象取值
+含义
+link
+网络设备
+address
+设备上的协议(IP或IPV6)地址
+addrlabel
+协议地址选择的标签配置
+route
+路由表条目
+rule
+路由策略数据库中的规则
+OPTIONS 为常用选项，值可以是以下几种：
+OPTIONS={ -V[ersion] | -s[tatistics] | -d[etails] | -r[esolve] | -h[uman-readable] | -iec | -f[amily] { inet | inet6 | ipx | dnet | link } | -o[neline] | -t[imestamp] | -b[atch] [filename] | -rc[vbuf] [size] }
+常用选项取值
+含义
+-V
+显示命令的版本信息
+-s
+输出更详细的信息
+-f
+强制使用指定的协议族
+-4
+指定使用的网络层协议是IPv4协议
+-6
+指定使用的网络层协议是IPv6协议
+-0
+输出信息每条记录输出一行，即使内容较多也不换行显示
+-r
+显示主机时，不使用IP地址，而使用主机的域名
+help
+该命令的帮助信息
+示例：
+ip link show                     # 显示网络接口信息
+ip link set eth0 up             # 开启网卡
+ip link set eth0 down            # 关闭网卡
+ip link set eth0 promisc on      # 开启网卡的混合模式
+ip link set eth0 promisc offi    # 关闭网卡的混合模式
+ip link set eth0 txqueuelen 1200 # 设置网卡队列长度
+ip link set eth0 mtu 1400        # 设置网卡最大传输单元
+ip addr show     # 显示网卡IP信息
+ip addr add 192.168.0.1/24 dev eth0 # 设置eth0网卡IP地址192.168.0.1
+ip addr del 192.168.0.1/24 dev eth0 # 删除eth0网卡IP地址
+ip route show # 显示系统路由
+ip route add default via 192.168.1.254   # 设置系统默认路由
+ip route list                 # 查看路由信息
+ip route add 192.168.4.0/24  via  192.168.0.254 dev eth0 # 设置192.168.4.0网段的网关为192.168.0.254,数据走eth0接口
+ip route add default via  192.168.0.254  dev eth0        # 设置默认网关为192.168.0.254
+ip route del 192.168.4.0/24   # 删除192.168.4.0网段的网关
+ip route del default          # 删除默认路由
+ip route delete 192.168.1.0/24 dev eth0 # 删除路由
+用 ip 命令显示网络设备的运行状态：
+ip link list
+显示更加详细的设备信息：
+ip -s link list
+显示核心路由表：
+ip route list
+13.创建zip压缩包
+zip 是个使用广泛的压缩程序，压缩后的文件后缀名为 .zip。与 gzip 或 bzip2 不同，zip 可以压缩多个文件或整个目录，并保留文件的目录结构。zip 在跨平台（如 Windows、macOS）上也广泛支持。
+语法：
+zip [options] output.zip file1 file2  ...
+# output.zip   生成的压缩包名
+# file1 file2 ...  要压缩的文件或目录
+options 参数
+含义
+-r
+递归压缩目录及其子目录中的所有文件
+-e
+为压缩文件设置密码保护
+-q
+静默模式，不显示压缩过程
+-v
+显示详细的压缩过程
+-x
+排除某些文件或目录，不进行压缩
+-m
+压缩后删除原始文件
+-0到9
+指定压缩级别，-0 表示存储不压缩，-9 表示最高压缩率，默认是 -6
+示例：
+压缩单个文件
+zip archive.zip example.txt     # 将example.txt压缩为archive.zip
+压缩多个文件
+zip archive.zip file1.txt file2.txt file3.txt
+递归压缩目录
+zip -r archive.zip directory/
+# 此命令会递归压缩 directory 目录及其子目录中的所有文件，并保留目录结构
+排除特定文件
+zip -r archive.zip directory/ -x "*.log"
+# 此命令会压缩 directory/ 目录下的所有文件，但排除所有 .log 文件。
+压缩后删除原始文件
+zip -m archive.zip file.txt
+# 此命令会将 file.txt 压缩为 archive.zip，并删除原始文件 file.txt
+14.解压zip压缩包
+Linux unzip 命令用于解压缩 .zip 格式的压缩文件。unzip 工具能够解压缩包含多个文件和目录的 .zip 文件，并且广泛用于处理跨平台压缩文件。
+语法：
+unzip [options] file.zip
+# file.zip：被解压缩的 .zip 文件
+options 参数
+含义
+-d  <directory>
+将解压缩的文件放入指定的目录
+-l
+列出 .zip 文件中的内容，但不解压
+-v
+显示详细信息，包括 .zip 文件的结构和压缩率等信息
+-t
+测试 .zip 文件的完整性，但不解压
+-n
+解压时不覆盖已存在的文件
+-o
+解压时覆盖已存在的文件，而不提示
+-x  <pattern>
+解压时排除指定的文件或目录
+-j
+解压时不保留目录结构，将所有文件解压到当前目录中
+示例：
+解压缩.zip文件
+unzip archive.zip        # 此命令会将archive.zip中的内容解压到当前目录
+解压到指定目录
+unzip archive.zip -d /path/to/directory
+# 此命令会将 archive.zip 中的内容解压缩到指定的 /path/to/directory 目录中
+列出.zip文件的内容
+unzip -l archive.zip
+# 此命令会列出 archive.zip 中的所有文件和目录，但不会实际解压
+测试.zip文件的完整性
+unzip -t archive.zip
+# 此命令会测试 archive.zip 文件的完整性，以确保文件没有损坏
+解压时排除特定文件
+unzip archive.zip -x "*.log"
+# 此命令会解压 archive.zip，但排除所有 .log 文件
+解压时不覆盖已存在的文件
+unzip -n archive.zip
+# 此命令会解压 archive.zip 中的文件，但如果目标目录中已经存在同名文件，则跳过该文件，不进行覆盖
+解压缩文件并覆盖已存在的文件
+unzip -o archive.zip
+# 此命令会在解压 archive.zip 时覆盖目标目录中已存在的同名文件，而不会提示用户
+解压缩时不保留目录结构
+unzip -j archive.zip
+# 此命令会解压 archive.zip 中的所有文件到当前目录，而不会保留原始的目录结构
+注意事项:
+unzip 默认解压文件时会保留原始的目录结构。如果不需要保留目录结构，可以使用 -j 选项。
+unzip 可以通过 -x 选项排除某些文件或目录，这对于有选择性地解压缩特定文件很有用。
+15. zipinfo命令
+Linux zipinfo 命令用于显示 .zip 压缩文件的详细信息，而不解压文件。zipinfo 提供了有关压缩文件的内容、压缩比、时间戳等详细信息，是检查 .zip 文件内容的常用工具。
+语法:
+zipinfo [options] file.zip
+# file.zip：要查看信息的 .zip 文件
+options 参数
+含义
+-1
+仅列出 .zip 文件中的文件名，每个文件占一行
+-t
+显示每个文件的总数和未压缩后的总大小
+-h
+以更加可读的格式（人性化的格式）显示文件大小（如 KB, MB）
+-m
+显示 .zip 文件中每个文件的权限信息（Unix 格式）
+-v
+显示更详细的信息，包括压缩方式、版本、压缩比等
+-s
+总结 .zip 文件的总体信息，如文件数量、总大小等
+-l
+详细列出 .zip 文件的内容，包括文件大小、日期、时间等
+示例:
+列出 .zip 文件的内容
+zipinfo archive.zip
+# 此命令会列出 archive.zip 中的所有文件和目录，并显示文件的基本信息，如文件大小、日期、时间和压缩比
+仅列出文件名
+zipinfo -1 archive.zip
+# 此命令只会列出 archive.zip 中的文件名，每个文件占一行，没有其他详细信息
+显示详细信息
+zipinfo -v archive.zip
+# 此命令会显示 archive.zip 中每个文件的详细信息，包括文件权限、压缩方式、压缩率、版本等
+显示人性化的文件大小信息
+zipinfo -h archive.zip
+# 此命令会显示文件大小的更加可读的格式（如 KB, MB），让文件大小更容易理解
+总结.zip文件的整体信息
+zipinfo -s archive.zip
+# 此命令会提供 archive.zip 文件的总信息，如文件总数、压缩和解压后的总大小等
+注意事项:
+zipinfo 是一个只读工具，不会对 .zip 文件进行任何修改。
+zipinfo 提供的信息比 unzip -l 更为详细，适合在需要深入了解 .zip 文件时使用。
+16.高级包管理工具--apt
+apt（Advanced Packaging Tool）是一个在 Debian 和 Ubuntu 中的 Shell 前端软件包管理器。
+apt 命令提供了查找、安装、升级、删除某一个、一组甚至全部软件包的命令，而且命令简洁而又好记。
+apt 命令执行需要超级管理员权限(root)。
+语法:
+apt [options] [command] [package ...]
+# options：可选，选项包括 -h（帮助），-y（当安装过程提示选择全部为"yes"），-q（不显示安装的过程）等等
+# command：要进行的操作
+# package：安装的包名
+apt常用命令
+作用
+sudo apt update
+列出所有可更新的软件清单命令
+sudo apt upgrade
+升级软件包
+apt list --upgradable
+列出可更新的软件包及版本信息
+sudo apt full-upgrade
+升级软件包，升级前先删除需要更新软件包
+sudo apt install <package_name>
+安装指定的软件命令
+sudo apt install <package_1> <package_2> <package_3>
+安装多个软件包
+sudo apt update <package_name>
+更新指定的软件命令
+sudo apt show <package_name>
+显示软件包具体信息,例如：版本号，安装大小，依赖关系等等
+sudo apt remove <package_name>
+删除软件包命令
+sudo apt autoremove
+清理不再使用的依赖和库文件
+sudo apt purge <package_name>
+移除软件包及配置文件
+sudo apt search <keyword>
+查找软件包命令
+apt list --installed
+列出所有已安装的包
+apt list --all-versions
+列出所有已安装的包的版本信息
+17.apt-get命令
+apt-get 是 Debian 和 Ubuntu 等基于 Debian 的 Linux 发行版中用于管理软件包的核心命令行工具。
+apt-get 是 Advanced Packaging Tool (APT) 的前端工具，用于处理 .deb 格式的软件包。它能够自动解决软件包之间的依赖关系，简化了 Linux 系统的软件管理
+语法:
+sudo apt-get [选项] 命令 [包名]
+常用选项
+作用
+-y 或 --yes
+自动回答"是"对所有提示
+-q 或 --quiet
+安静模式，减少输出
+-s 或 --simulate
+列出可更新的软件包及版本信息
+--reinstall
+重新安装已安装的包
+示例:
+更新软件包列表(在安装或升级软件前，建议先更新本地软件包列表)
+sudo apt-get update
+安装软件包
+# 安装单个软件包
+sudo apt-get install package_name
+# 安装多个软件包
+sudo apt-get install package1 package2 package3
+卸载软件包
+# 移除软件包但保留配置文件：
+sudo apt-get remove package_name
+# 完全移除软件包及其配置文件：
+sudo apt-get purge package_name
+升级已安装的软件包
+# 升级所有可升级的软件包：
+sudo apt-get upgrade
+# 升级系统(包括可能需要删除旧包的系统升级)：
+sudo apt-get dist-upgrade
+高级用法
+# 1. 搜索软件包
+apt-cache search keyword
+# 示例：搜索与 Python 相关的软件包
+apt-cache search python
+# 2. 查看软件包信息
+apt-cache show package_name
+# 3. 清理无用软件包
+# 删除已下载的软件包文件(.deb)：
+sudo apt-get clean
+# 删除不再需要的软件包(自动清理)：
+sudo apt-get autoclean
+# 4. 修复损坏的依赖关系
+sudo apt-get -f install
+五、ROS平台入门
+5.1 ROS的基本概念
+5.1.1 ROS是什么
+什么是ROS？ROS 是一个适用于机器人的开源的元操作系统。它提供了操作系统应有的服务，包括硬件抽象，底层设备控制，常用函数的实现，进程间消息传递，以及包管理。它也提供用于获取、编译、编写、和跨计算机运行代码所需的工具和库函数。
+ROS 的主要目标是为机器人研究和开发提供代码复用的支持。ROS是一个分布式的进程（也就是节点）框架，这些进程被封装在易于被分享和发布的程序包和功能包集中。ROS也支持一种类似于代码储存库的联合系统，这个系统也可以实现工程的协作及发布。这个设计可以使一个工程的开发和实现从文件系统到用户接口完全独立决策（不受ROS限制）。同时，所有的工程都可以被ROS的基础工具整合在一起。
+ROS允许将软件功能分解为独立的节点，每个节点负责执行特定的任务，如传感器数据处理、控制算法实现等，并通过定义良好的接口进行通信。这种设计促进了模块化开发，提高了代码的复用性和系统的可扩展性。ROS的核心是一个强大的通信框架，它支持多种消息传递模式，包括发布/订阅和请求/响应，使得不同节点之间可以高效地交换信息。此外，ROS还提供了丰富的工具集，用于可视化、仿真、调试等。
+5.1.2 ROS的核心概念
+1. 工作空间与功能包
+工作空间(workspace)：是一个存放工程开发相关文件的文件夹。内有src:代码空间(Source Space)、build:编译空间(Build Space)、devel:开发空间(DevelopmentSpace)
+功能包(Package)：ROS软件中的基本单元，包含节点源码、配置文件、数据定义等
+2. 节点与节点管理器
+节点(node)：执行具体任务的进程、独立运行的可执行文件,不同节点可使用不同的编程语言，可分布式运行在不同的主机;节点在系统中的名称必须是唯一的。
+节点管理器(rosmaster)：为节点提供命名和注册服务。跟踪和记录话题/服务通信，辅助节点相互查找、建立连接。提供参数服务器，节点使用此服务器存储和检索运行时的参数。
+3. 话题通信
+话题(topic)：异步通信机制。节点间用来传输数据的一种方式。使用发布/订阅模型，数据由发布者(publisher)传输到订阅者(subscriber)，同一个话题的订阅者或发布者可以不唯一。
+话题消息(message)：具有一定的类型和数据结构，包括ROS提供的标准类型和用户自定义类型。使用编程语言无关的.msg文件定义，编译过程中生成对应的代码文件。
+ros预设有很多的消息类型，我们可以根据需要来查找选择，以下是比较常用的消息类型
+std_msgs：https://docs.ros.org/en/noetic/api/std_msgs/html/index-msg.html
+geometry_msgs：https://docs.ros.org/en/noetic/api/geometry_msgs/html/index-msg.html
+sensor_msgs：https://docs.ros.org/en/noetic/api/sensor_msgs/html/index-msg.html
+nav_msgs：https://docs.ros.org/en/noetic/api/nav_msgs/html/index-msg.html
+4. 服务通信
+服务(Service)：同步通信机制。使用客户端/服务器(C/S)模型，客户端发送请求数据，服务器完成处理后返回应答数据。
+服务类型 (Service Type)：使用编程语言无关的.srv文件定义请求和应答数据结构，编译过程中生成对应的代码文件。
+5. 参数
+参数(Parameter)：全局共享字典。可通过网络访问的共享、多变量字典。节点使用此服务器来存储和检索运行时的参数。适合存储静态、非二进制的配置参数，不适合存储动态配置的数据。
+5.1.3 常用的ROS命令行工具
+1.节点rosnode
+rosnode list
+查看所有节点名称
+rosnode ping / <节点名称>
+能否链接节点
+rosnode info / <节点名称>
+查看某个节点的信息
+rosnode machine <机器>
+查看指定机器的节点信息
+rosnode kill / <节点名称>
+结束节点
+rosnode cleanup
+清除僵尸节点
+2. 话题rostopic
+rostopic list
+列出活跃节点发布的话题名称
+rostopic echo <话题名称>
+获取话题发布的消息
+rostopic hz <话题名称>
+查看话题发布频率
+rostopic pub <话题名称> <消息类型>
+向话题发布消息
+rostopic info <话题名称>
+查看话题信息
+rostopic type <话题名称>
+查看话题消息
+3. 服务rosservice
+rosservice list
+查看当前活跃的服务
+rosservice call <服务名称> <服务类型>
+向服务端请求服务
+rosservice info <服务名称>
+查看服务信息
+rosservice type <服务名称>
+查看服务类型
+4. 参数rosparam
+rosparam list
+列出所有参数
+rosparam set <参数> <值>
+设置参数
+rosparam get <参数>
+获取参数
+rosparam delete <参数>
+删除参数
+rosparam load <文件名称>.yaml
+加载yaml参数文件
+5. 数据rosbag
+rosbag record /<话题名> -o <包名>
+采集记录话题的数据并生成bag包
+rosbag play <bag包名字>
+播放bag包
+5.2 ROS的编程应用
+5.2.1 创建工作空间与功能包
+1. 创建工作空间
+新建一个文件夹(名字自定义，但不要出现中文，例如ros_test_ws)，进入该文件夹下再新建一个名为”src”的文件夹。在命令行下，进入ros_test_ws文件夹(也可以叫工作空间)，输入catkin_make,完成ros工程的创建。
+mkdir -p ~/ros_test_ws/src
+cd ~/ros_test_ws
+catkin_make
+2. 设置并检查环境变量
+source devel/setup.bash
+echo $ROS_PACKAGE_PATH
+可以找到刚刚创建的文件夹路径
+3. 创建功能包
+在命令行下使用cd进入src文件目录下，通过指令创建功能包
+cd ~/ros_test_ws/src
+catkin_create_pkg test_pkg std_msgs rospy roscpp
+创建功能包的命令格式：
+catkin_create_pkg <package_name> [depend1] [depend2] [depend3]······
+上面命令中<package_name>是test_pkg，也就是功能包的名字
+[depend1]是std_msgs，[depend2]是rospy，[depend3]是roscpp，这三个为该功能包的依赖项，rospy和roscpp是使用python或c++编写ros代码不可或缺的依赖，std_msgs则包含了很多常用的消息，可根据需要添加更多的依赖
+5.2.2 发布者publisher的编程实现
+C++的实现
+1. 编写节点代码（c++）
+在功能包test_pkg的src文件夹里，新建一个cpp文件，作为一个发布节点程序。例如std_msg_publish.cpp。
+实现一个发布者大概分为以下几个步骤：
+（1）初始化ROS节点
+（2）向ROS Master注册节点信息，包括发布的话题名和话题中的消息类型
+（3）创建消息数据，并填充
+（4）发布消息。
+//导入ros的c++接口
+#include <ros/ros.h>
+//导入Int64消息数据类型
+#include <std_msgs/Int64.h>
+int main(int argc, char **argv)
+{
+// ROS节点初始化
+ros::init(argc, argv, "std_msg_publish");
+// 创建节点句柄
+ros::NodeHandle n;
+// 创建一个Publisher，发布名为/zmofly/test/pub_int64的topic，消息类型为std_msgs::Int64，队列长度10
+ros::Publisher int64_pub = n.advertise<std_msgs::Int64>("/zmofly/test/pub_int64", 10);
+// 设置循环的频率
+ros::Rate loop_rate(1);
+int x = 0;
+while (ros::ok())
+{
+// 初始化std_msgs::Int64类型的消息
+std_msgs::Int64 pub_msg;
+pub_msg.data = x;
+// 发布消息
+int64_pub.publish(pub_msg);
+ROS_INFO("Publsh number [%ld]", pub_msg.data);
+x = x + 1;
+// 按照循环频率延时
+loop_rate.sleep();
+}
+return 0;
+}
+2. 修改配置文件（c++）
+在构建完test_pkg功能包后，会在该文件夹中生成一个CMakeLists.txt，打开文件，在文件最后添加以下代码
+add_executable(std_msg_publish src/std_msg_publish.cpp)
+target_link_libraries(std_msg_publish ${catkin_LIBRARIES})
+设置需要编译的代码和生成的可执行文件，以及设置链接库
+3. 编译运行（c++）
+在命令行下，cd进入ros_test_ws文件夹，输入catkin_make编译工程。
+cd ~/ros_test_ws
+catkin_make
+编译成功后，再输入source ~/ros_test_ws/devel/setup.bash更新环境变量。打开一个新的命令行，输入roscore，再在之前的命令行中输入rosrun test_pkg std_msg_publish运行该发布节点程序，运行成功后终端打印当前发布的数字
+source ~/ros_test_ws/devel/setup.bash
+roscore
+rosrun test_pkg std_msg_publish
+打开一个新窗口，输入以下命令，查看节点话题发布的消息
+rostopic echo zmofly/test/pub_int64
+Python的实现
+1. 编写节点代码（python）
+在test_pkg功能包下创建文件夹scripts (如果有则无需创建)
+mkdir -p ~/ros_test_ws/src/test_pkg/scripts
+在文件夹scripts里面新建一个py文件，作为一个发布节点程序。例如std_msg_publish.py。
+实现一个发布者大概分为以下几个步骤：
+（1）初始化ROS节点
+（2）向ROS Master注册节点信息，包括发布的话题名和话题中的消息类型
+（3）创建消息数据，并填充
+（4）发布消息。
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+# 导入ros的python接口
+import rospy
+# 导入Int64消息数据类型
+from std_msgs.msg import Int64
+def std_msg_publish():
+# ROS节点初始化
+rospy.init_node('std_msg_publish')
+# 创建一个Publisher，发布名为/zmofly/test/pub_int64的topic，消息类型为std_msgs::Int64，队列长度10
+int64_pub = rospy.Publisher('/zmofly/test/pub_int64', Int64, queue_size=10)
+# 设置循环的频率
+rate = rospy.Rate(1)
+x = 0
+while not rospy.is_shutdown():
+# 初始化std_msg::Int8类型的消息
+pub_msg = Int64()
+pub_msg.data = x
+# 发布消息
+int64_pub.publish(pub_msg)
+rospy.loginfo(f"Publsh number {pub_msg}")
+x = x + 1
+# 按照循环频率延时
+rate.sleep()
+if __name__ == '__main__':
+std_msg_publish()
+2. 运行（python）
+python文件无需编译，先给予文件可执行权限
+sudo chmod +x ~/ros_test_ws/src/test_pkg/scripts/std_msg_publish.py
+再输入source ~/ros_test_ws/devel/setup.bash更新环境变量。打开一个新的命令行，输入roscore，再在之前的命令行中输入rosrun test_pkg std_msg_publish.py运行该节点程序，运行成功后终端打印当前发布的数字
+rosrun test_pkg std_msg_publish.py
+5.2.3 订阅者subscriber的编程实现
+C++的实现
+1. 编写节点代码（c++）
+在功能包test_pkg的src文件夹里，新建一个cpp文件，作为一个订阅节点程序。例如std_msg_subscribe.cpp。
+实现一个订阅者大概分为以下几个步骤：
+（1）初始化ROS节点
+（2）订阅需要的话题
+（3）循环等待话题消息，接收到消息后进入回调函数
+（4）在回调函数中完成消息处理
+//导入ros的c++接口
+#include <ros/ros.h>
+//导入Int64消息数据类型
+#include <std_msgs/Int64.h>
+// 接收到订阅的消息后，会进入消息回调函数
+void int64_Callback(const std_msgs::Int64::ConstPtr& msg)
+{
+// 将接收到的消息打印出来
+ROS_INFO("subscribe number [%ld]!!!", msg->data);
+}
+int main(int argc, char **argv)
+{
+// 初始化ROS节点
+ros::init(argc, argv, "std_msg_subscribe");
+// 创建节点句柄
+ros::NodeHandle n;
+// 创建一个Subscriber，订阅名为/zmofly/test/pub_int64的topic，注册回调函数int64_Callback
+ros::Subscriber int64_sub = n.subscribe("/zmofly/test/pub_int64", 10, int64_Callback);
+// 循环等待回调函数
+ros::spin();
+return 0;
+}
+2. 修改配置文件（c++）
+在构建完test_pkg功能包后，会在该文件夹中生成一个CMakeLists.txt，打开文件，在文件最后添加以下代码
+add_executable(std_msg_subscribe src/std_msg_subscribe.cpp)
+target_link_libraries(std_msg_subscribe ${catkin_LIBRARIES})
+设置需要编译的代码和生成的可执行文件，以及设置链接库
+3. 编译运行（c++）
+在命令行下，cd进入ros_test_ws文件夹，输入catkin_make编译工程。
+cd ~/ros_test_ws
+catkin_make
+编译成功后，输入source ~/ros_test_ws/devel/setup.bash更新环境变量。打开一个新的命令行，输入roscore，再在之前的命令行中输入rosrun test_pkg std_msg_subscribe运行该订阅节点，再开一个新终端，输入source ~/ros_test_ws/devel/setup.bash更新环境变量，在命令行中输入rosrun test_pkg std_msg_publish运行发布节点，运行成功后终端打印订阅到的数字。
+可以看到，订阅节点收到了发布节点发出的消息并打印了出来
+source ~/ros_test_ws/devel/setup.bash
+roscore
+rosrun test_pkg std_msg_subscribe
+rosrun test_pkg std_msg_publish
+Python的实现
+1. 编写节点代码（python）
+在test_pkg功能包下创建文件夹scripts (如果有则无需创建)
+mkdir -p ~/ros_test_ws/src/test_pkg/scripts
+在文件夹scripts里面新建一个py文件，作为一个订阅节点程序。例如std_msg_subscribe.py。
+实现一个订阅者大概分为以下几个步骤：
+（1）初始化ROS节点
+（2）订阅需要的话题
+（3）循环等待话题消息，接收到消息后进入回调函数
+（4）在回调函数中完成消息处理
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+# 导入ros的python接口
+import rospy
+# 导入Int64消息数据类型
+from std_msgs.msg import Int64
+# 回调函数
+def int64_callback(msg):
+# 打印获取到的数据
+rospy.loginfo(f"subscribe number {msg.data}!!!")
+def std_msg_subscribe():
+# ROS节点初始化
+rospy.init_node('std_msg_subscribe')
+# 创建一个Subscriber，订阅名为/zmofly/test/pub_int64的topic，订阅类型为std_msg::Int64的消息，如果接收到消息，触发回调函数int64_callback()
+rospy.Subscriber("/zmofly/test/pub_int64", Int64, int64_callback)
+# 阻塞函数，保持节点活跃
+rospy.spin()
+if __name__ == '__main__':
+std_msg_subscribe()
+2. 运行（python）
+python文件无需编译，先给予文件可执行权限
+sudo chmod +x ~/ros_test_ws/src/test_pkg/scripts/std_msg_subscribe.py
+再输入source ~/ros_test_ws/devel/setup.bash更新环境变量。打开一个新的命令行，输入roscore，再在之前的命令行中输入rosrun test_pkg std_msg_subscribe.py运行该订阅节点，再开一个新终端，输入source ~/ros_test_ws/devel/setup.bash更新环境变量，在命令行中输入rosrun test_pkg std_msg_publish运行发布节点，运行成功后终端打印订阅到的数字。
+可以看到，订阅节点收到了发布节点发出的消息并打印了出来
+rosrun test_pkg std_msg_subscribe.py
+5.2.4 话题消息的自定义
+ros预先定义好的消息类型，基本涵盖了大部分的使用场景，但如果在开发中，这些ros提前定义好的消息无法满足我们的需求，这时就需要我们根据情况自己定义一个消息类型。
+1. 定义.msg文件
+在test_pkg功能包下创建文件夹msg
+mkdir -p ~/ros_test_ws/src/test_pkg/msg
+在文件夹msg里新建一个.msg文件，例如Player.msg。根据需要添加数据类型
+示例为一个关于玩家的消息类型，包含有姓名（string），职业（string），等级（uint8）三个数据类型
+2. 修改配置文件
+找到test_pkg功能包下的package.xml文件，在文件接近末尾的位置添加以下代码
+<build_depend>message_generation</build_depend>
+<exec_depend>message_runtime</exec_depend>
+其中<build_depend>message_generation</build_depend>为编译依赖。当你的包中定义了自定义的 .msg 文件（例如 Player.msg）时，ROS 需要一个工具来将这些 .msg 文件编译成特定编程语言（如 C++ 或 Python）的代码。message_generation 包提供了这些代码生成工具。
+而<exec_depend>message_runtime</exec_depend>则是运行依赖。它为消息类型的运行提供了所需的库和运行环境的支持。任何使用消息（无论是标准消息还是自定义消息）的节点，在运行时都需要 message_runtime。
+找到test_pkg功能包下的CMakeLists.txt文件，在以下图示三处位置添加相应代码。
+在find_package内添加message_generation，来查找并加载 message_generation 功能包，让我们可以使用它的add_message_files()和generate_messages()命令，从而将.msg和.srv文件转换为C++和Python能够调用的消息类
+message_generation
+add_message_files(FILES Player.msg)声明当前包中需要参与构建的自定义消息文件Player.msg。
+generate_messages(DEPENDENCIES std_msgs)将 .msg 文件转换为C++头文件和Python模块。同时声明该消息所依赖的其他消息包（这里是 std_msgs），因为 .msg 中使用的 string、uint8 等类型实际上是 std_msgs/String、std_msgs/UInt8 的别名
+generate_messages() 只能调用一次
+且必须放在 所有 add_message_files 和 add_service_files 之后
+add_message_files(FILES Player.msg)
+generate_messages(DEPENDENCIES std_msgs)
+catkin_package() 宏用于声明当前包的导出接口（exported interface）。其中，CATKIN_DEPENDS 字段指定了本包在编译和运行时所依赖的catkin工具链管理的功能包（catkin-managed packages），这些依赖将作为传递性依赖（transitive dependencies）被自动传播给所有依赖本包的下游功能包。
+因此，当其他 ROS 功能包通过find_package(catkin REQUIRED COMPONENTS test_pkg)声明对本包的依赖时，CMake系统将自动确保roscpp、rospy、std_msgs和 message_runtime被正确配置和链接，以满足本包头文件、库和消息类型的编译与运行时需求。
+message_runtime
+3. 编译自定义消息
+在命令行下，cd进入ros_test_ws文件夹，输入catkin_make编译工程。
+cd ~/ros_test_ws
+catkin_make
+编译完成后，在~/ros_test_ws/devel/include/路径下可以以找到生成的c++消息文件。
+在~/ros_test_ws/devel/lib/python3/dist-packages/路径下可以以找到生成的python消息文件。
+5.2.5 自定义话题消息的使用
+C++的实现
+1. 编写节点代码（c++）
+在功能包test_pkg的src文件夹里，新建一个cpp文件，作为一个发布节点程序。例如player_publish.cpp。导入我们自己定义的消息数据类型
+//导入ros的c++接口
+#include <ros/ros.h>
+//导入Player消息数据类型
+#include <test_pkg/Player.h>
+int main(int argc, char **argv)
+{
+// ROS节点初始化
+ros::init(argc, argv, "player_publish");
+// 创建节点句柄
+ros::NodeHandle n;
+// 创建一个Publisher，发布名为/zmofly/test/pub_player的topic，消息类型为test_pkg::Player，队列长度10
+ros::Publisher player_pub = n.advertise<test_pkg::Player>("/zmofly/test/pub_player", 10);
+// 设置循环的频率
+ros::Rate loop_rate(1);
+while (ros::ok())
+{
+// 初始化test_pkg::Player类型的消息
+test_pkg::Player pub_msg;
+pub_msg.pc_name = "Bourbon";
+pub_msg.pc_class = "cavalry";
+pub_msg.pc_level = 83;
+// 发布消息
+player_pub.publish(pub_msg);
+ROS_INFO("Publish the player's name:[%s], class:[%s], level:[%d]", pub_msg.pc_name.c_str(), pub_msg.pc_class.c_str(), pub_msg.pc_level);
+// 按照循环频率延时
+loop_rate.sleep();
+}
+return 0;
+}
+在功能包test_pkg的src文件夹里，新建一个cpp文件，作为一个订阅节点程序。例如player_subscribe.cpp。导入我们自己定义的消息数据类型
+//导入ros的c++接口
+#include <ros/ros.h>
+//导入Player消息数据类型
+#include <test_pkg/Player.h>
+// 接收到订阅的消息后，会进入消息回调函数
+void player_Callback(const test_pkg::Player::ConstPtr& msg)
+{
+// 将接收到的消息打印出来
+ROS_INFO("Subscribe to the player's name:[%s], class:[%s], level:[%d]", msg->pc_name.c_str(), msg->pc_class.c_str(), msg->pc_level);
+}
+int main(int argc, char **argv)
+{
+// 初始化ROS节点
+ros::init(argc, argv, "player_subscribe");
+// 创建节点句柄
+ros::NodeHandle n;
+// 创建一个Subscriber，订阅名为/zmofly/test/pub_player的topic，注册回调函数player_Callback
+ros::Subscriber player_sub = n.subscribe("/zmofly/test/pub_player", 10, player_Callback);
+// 循环等待回调函数
+ros::spin();
+return 0;
+}
+2. 修改配置文件（c++）
+在构建完test_pkg功能包后，会在该文件夹中生成一个CMakeLists.txt，打开文件，在文件最后添加以下代码
+add_executable(player_publish src/player_publish.cpp)
+add_dependencies(player_publish
+${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+target_link_libraries(player_publish ${catkin_LIBRARIES})
+add_executable(player_subscribe src/player_subscribe.cpp)
+add_dependencies(player_subscribe ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+target_link_libraries(player_subscribe ${catkin_LIBRARIES})
+3. 编译运行（c++）
+在命令行下，cd进入ros_test_ws文件夹，输入catkin_make编译工程。
+cd ~/ros_test_ws
+catkin_make
+编译成功后，输入source ~/ros_test_ws/devel/setup.bash更新环境变量。打开一个新的命令行，输入roscore，再在之前的命令行中输入rosrun test_pkg player_subscribe运行该订阅节点，再开一个新终端，输入source ~/ros_test_ws/devel/setup.bash更新环境变量，在命令行中输入rosrun test_pkg player_publish运行发布节点，运行成功后终端打印订阅到的消息。
+可以看到，订阅节点收到了发布节点发出的消息并打印了出来
+source ~/ros_test_ws/devel/setup.bash
+roscore
+rosrun test_pkg player_subscribe
+rosrun test_pkg player_publish
+我们也可以通过命令行工具来查看话题消息，可以看到该话题消息就是我们先前定义的格式
+rostopic echo /zmofly/test/pub_player
+Python的实现
+1. 编写节点代码（python）
+在test_pkg功能包下创建文件夹scripts (如果有则无需创建)
+mkdir -p ~/ros_test_ws/src/test_pkg/scripts
+在文件夹scripts里面新建一个py文件，作为一个发布节点程序。例如player_publish.py。
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+# 导入ros的python接口
+import rospy
+# 导入Player消息数据类型
+from test_pkg.msg import Player
+def std_msg_publish():
+# ROS节点初始化
+rospy.init_node('player_publish')
+# 创建一个Publisher，发布名为/zmofly/test/pub_player的topic，消息类型为test_pkg::Player，队列长度10
+player_pub = rospy.Publisher('/zmofly/test/pub_player', Player, queue_size=10)
+# 设置循环的频率
+rate = rospy.Rate(1)
+while not rospy.is_shutdown():
+# 初始化test_pkg::Player类型的消息
+pub_msg = Player()
+pub_msg.pc_name = "Bourbon"
+pub_msg.pc_class = "cavalry"
+pub_msg.pc_level = 83
+# 发布消息
+player_pub.publish(pub_msg)
+rospy.loginfo(f"Publish the player's name:{pub_msg.pc_name}, class:{pub_msg.pc_class}, level:{pub_msg.pc_level}")
+# 按照循环频率延时
+rate.sleep()
+if __name__ == '__main__':
+std_msg_publish()
+在文件夹scripts里面新建一个py文件，作为一个订阅节点程序。例如player_subscribe.py。
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+# 导入ros的python接口
+import rospy
+# 导入Player消息数据类型
+from test_pkg.msg import Player
+# 回调函数
+def player_callback(msg):
+# 打印获取到的数据
+rospy.loginfo(f"Subscribe to the player's name:{msg.pc_name}, class:{msg.pc_class}, level:{msg.pc_level}")
+def player_subscribe():
+# ROS节点初始化
+rospy.init_node('player_subscribe')
+# 创建一个Subscriber，订阅名为/zmofly/test/pub_player的topic，订阅类型为test_pkg::Player的消息，如果接收到消息，触发回调函数player_callback()
+rospy.Subscriber("/zmofly/test/pub_player", Player, player_callback)
+# 阻塞函数，保持节点活跃
+rospy.spin()
+if __name__ == '__main__':
+player_subscribe()
+2. 运行（python）
+python文件无需编译，先给予文件可执行权限
+sudo chmod +x ~/ros_test_ws/src/test_pkg/scripts/*
+再输入source ~/ros_test_ws/devel/setup.bash更新环境变量。打开一个新的命令行，输入roscore，再在之前的命令行中输入rosrun test_pkg player_subscribe.py运行该订阅节点，再开一个新终端，输入source ~/ros_test_ws/devel/setup.bash更新环境变量，在命令行中输入rosrun test_pkg player_publish.py运行发布节点，运行成功后终端打印订阅到的消息。
+可以看到，订阅节点收到了发布节点发出的消息并打印了出来
+rosrun test_pkg player_subscribe.py
+rosrun test_pkg player_publish.py
+5.2.6 服务类型的自定义
+ros预先定义好的服务类型，只有寥寥几个，并且功能单一，可传递的数据量少。在日常开发中，很难满足我们的需求，因此，在使用时基本都需要我们自己去定义可用的服务类型。所以服务相关的内容我们就先从自定义服务类型开始了解。
+1. 定义.srv文件
+在test_pkg功能包下创建文件夹srv
+mkdir -p ~/ros_test_ws/src/test_pkg/srv
+在文件夹srv里新建一个.srv文件，例如SetLevel.srv。
+示例为一个关于改变等级的消息类型，其中三个横线上面为客户端要发送的请求数据（request），三个横线下面为服务端要返回的反馈数据（response），两个数据之间用“---”三个横线分开。
+2. 修改配置文件
+找到test_pkg功能包下的package.xml文件，在文件接近末尾的位置添加以下代码
+<build_depend>message_generation</build_depend>
+<exec_depend>message_runtime</exec_depend>
+其中<build_depend>message_generation</build_depend>为编译依赖。当你的包中定义了自定义的 .msg 文件（例如 Player.msg）时，ROS 需要一个工具来将这些 .msg 文件编译成特定编程语言（如 C++ 或 Python）的代码。message_generation 包提供了这些代码生成工具。
+而<exec_depend>message_runtime</exec_depend>则是运行依赖。它为消息类型的运行提供了所需的库和运行环境的支持。任何使用消息（无论是标准消息还是自定义消息）的节点，在运行时都需要 message_runtime。
+找到test_pkg功能包下的CMakeLists.txt文件，在以下图示三处位置添加相应代码
+在find_package内添加message_generation，来查找并加载 message_generation 功能包，让我们可以使用它的add_message_files()和generate_messages()命令，从而将.msg和.srv文件转换为C++和Python能够调用的消息类
+message_generation
+add_message_files(FILES SetLevel.srv)声明当前包中需要参与构建的自定义消息文件SetLevel.srv。
+generate_messages(DEPENDENCIES std_msgs)将 .srv 文件转换为C++头文件和Python模块。同时声明该消息所依赖的其他消息包（这里是 std_msgs），因为 .srv 中使用的 string、uint8 等类型实际上是 std_msgs/String、std_msgs/UInt8 的别名
+generate_messages() 只能调用一次
+且必须放在 所有 add_message_files 和 add_service_files 之后
+add_service_files(FILES SetLevel.srv)
+generate_messages(DEPENDENCIES std_msgs)
+catkin_package() 宏用于声明当前包的导出接口（exported interface）。其中，CATKIN_DEPENDS 字段指定了本包在编译和运行时所依赖的catkin工具链管理的功能包（catkin-managed packages），这些依赖将作为传递性依赖（transitive dependencies）被自动传播给所有依赖本包的下游功能包。
+因此，当其他 ROS 功能包通过find_package(catkin REQUIRED COMPONENTS test_pkg)声明对本包的依赖时，CMake系统将自动确保roscpp、rospy、std_msgs和 message_runtime被正确配置和链接，以满足本包头文件、库和消息类型的编译与运行时需求。
+message_runtime
+3. 编译自定义服务
+在命令行下，cd进入ros_test_ws文件夹，输入catkin_make编译工程。
+cd ~/ros_test_ws
+catkin_make
+编译完成后，在~/ros_test_ws/devel/include/路径下可以以找到生成的c++服务文件。
+在~/ros_test_ws/devel/lib/python3/dist-packages/路径下可以以找到生成的python服务文件。
+5.2.7 服务端server和客户端client的编程实现
+C++的实现
+1. 编写节点代码（c++）
+在功能包test_pkg的src文件夹里，新建一个cpp文件，作为一个服务端节点程序。例如level_server.cpp。导入我们自己定义的服务数据类型
+实现一个服务端大概分为以下几个步骤：
+（1）初始化ROS节点
+（2）创建server实例
+（3）循环等待服务请求，进入回调函数
+（4）在回调函数中完成服务功能的处理，并反馈应答数据
+//导入ros的c++接口
+#include <ros/ros.h>
+//导入SetLevel服务数据类型
+#include "test_pkg/SetLevel.h"
+// service回调函数，输入参数req，输出参数res
+bool levelCallback(test_pkg::SetLevel::Request  &req,
+test_pkg::SetLevel::Response &res)
+{
+// 显示请求数据
+ROS_INFO("current Level: %d", req.level);
+// 设置反馈数据
+res.result = "OK";
+return true;
+}
+int main(int argc, char **argv)
+{
+// ROS节点初始化
+ros::init(argc, argv, "SetLevel_server");
+// 创建节点句柄
+ros::NodeHandle n;
+// 创建一个名为/zmofly/test/level_server的server，注册回调函数levelCallback
+ros::ServiceServer person_service = n.advertiseService("/zmofly/test/level_server", levelCallback);
+// 循环等待回调函数
+ROS_INFO("Waiting to set the level.");
+ros::spin();
+return 0;
+}
+在功能包test_pkg的src文件夹里，新建一个cpp文件，作为一个客户端节点程序。例如level_client.cpp。导入我们自己定义的服务数据类型
+实现一个客户端大概分为以下几个步骤：
+（1）初始化ROS节点
+（2）创建一个Client实例
+（3）发布服务请求数据
+（4）等待Server处理之后的应答结果。
+//导入ros的c++接口
+#include <ros/ros.h>
+//导入SetLevel服务数据类型
+#include "test_pkg/SetLevel.h"
+int main(int argc, char** argv)
+{
+// 初始化ROS节点
+ros::init(argc, argv, "SetLevel_client");
+// 创建节点句柄
+ros::NodeHandle n;
+// 发现/zmofly/test/level_server服务后，创建一个服务客户端，连接名为/zmofly/test/level_server的service
+ros::service::waitForService("/zmofly/test/level_server");
+ros::ServiceClient person_client = n.serviceClient<test_pkg::SetLevel>("/zmofly/test/level_server");
+// 初始化test_pkg::SetLevel的请求数据
+test_pkg::SetLevel srv;
+srv.request.level = 11;
+// 请求服务调用
+ROS_INFO("Call service set level [%d]", srv.request.level);
+person_client.call(srv);
+// 显示服务调用结果
+ROS_INFO("Show level result : %s", srv.response.result.c_str());
+return 0;
+}
+2. 修改配置文件（c++）
+在构建完test_pkg功能包后，会在该文件夹中生成一个CMakeLists.txt，打开文件，在文件最后添加以下代码
+add_executable(level_server src/level_server.cpp)
+add_dependencies(level_server ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+target_link_libraries(level_server ${catkin_LIBRARIES})
+add_executable(level_client src/level_client.cpp)
+add_dependencies(level_client ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+target_link_libraries(level_client ${catkin_LIBRARIES})
+3. 编译运行（c++）
+在命令行下，cd进入ros_test_ws文件夹，输入catkin_make编译工程。
+cd ~/ros_test_ws
+catkin_make
+编译成功后，输入source ~/ros_test_ws/devel/setup.bash更新环境变量。打开一个新的命令行，输入roscore，再在之前的命令行中输入rosrun test_pkg level_server运行该服务端节点
+source ~/ros_test_ws/devel/setup.bash
+roscore
+rosrun test_pkg level_server
+新开一个窗口，输入rosservice list查看当前的活跃服务，其中就有我们定义的/zmofly/test/level_server服务
+接着我们使用rosservice指令rosservice call /zmofly/test/level_server "level: 55"来请求服务，测试一下服务端，可以看到服务端打印出了请求的数据，并且反馈了OK
+rosservice list
+rosservice call /zmofly/test/level_server "level: 55"
+打开一个新窗口，输入source ~/ros_test_ws/devel/setup.bash更新环境变量。输入rosrun test_pkg level_client运行该客户端节点
+可以看到客户端成功请求了服务，并打印了反馈数据，服务端打印了请求数据，并返回了反馈
+source ~/ros_test_ws/devel/setup.bash
+rosrun test_pkg level_client
+Python的实现
+1. 编写节点代码（python）
+在test_pkg功能包下创建文件夹scripts (如果有则无需创建)
+mkdir -p ~/ros_test_ws/src/test_pkg/scripts
+在文件夹scripts里面新建一个py文件，作为一个服务端节点程序。例如level_server.py。
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+# 导入ros的python接口
+import rospy
+# 导入SetLevel服务数据类型
+from test_pkg.srv import SetLevel, SetLevelResponse
+def levelCallback(req):
+# 显示请求数据
+rospy.loginfo(f"current Level: [{req.level}]")
+# 反馈数据
+return SetLevelResponse("OK")
+def Level_server():
+# ROS节点初始化
+rospy.init_node('SetLevel_server')
+# 创建一个名为/zmofly/test/level_server的server，注册回调函数levelCallback
+s = rospy.Service('/zmofly/test/level_server', SetLevel, levelCallback)
+# 循环等待回调函数
+rospy.loginfo("Waiting to set the level.")
+rospy.spin()
+if __name__ == "__main__":
+Level_server()
+在文件夹scripts里面新建一个py文件，作为一个客户端节点程序。例如level_client.py。
+//导入ros的c++接口
+#include <ros/ros.h>
+//导入SetLevel服务数据类型
+#include "test_pkg/SetLevel.h"
+int main(int argc, char** argv)
+{
+// 初始化ROS节点
+ros::init(argc, argv, "SetLevel_client");
+// 创建节点句柄
+ros::NodeHandle n;
+// 发现/zmofly/test/level_server服务后，创建一个服务客户端，连接名为/zmofly/test/level_server的service
+ros::service::waitForService("/zmofly/test/level_server");
+ros::ServiceClient person_client = n.serviceClient<test_pkg::SetLevel>("/zmofly/test/level_server");
+// 初始化test_pkg::SetLevel的请求数据
+test_pkg::SetLevel srv;
+srv.request.level = 11;
+// 请求服务调用
+ROS_INFO("Call service set level [%d]", srv.request.level);
+person_client.call(srv);
+// 显示服务调用结果
+ROS_INFO("Show level result : %s", srv.response.result.c_str());
+return 0;
+}
+2. 运行（python）
+python文件无需编译，先给予文件可执行权限
+sudo chmod +x ~/ros_test_ws/src/test_pkg/scripts/*
+再输入source ~/ros_test_ws/devel/setup.bash更新环境变量。打开一个新的命令行，输入roscore，再在之前的命令行中输入rosrun test_pkg level_server.py运行该服务端节点，再开一个新终端，输入source ~/ros_test_ws/devel/setup.bash更新环境变量，在命令行中输入rosrun test_pkg level_client.py运行客户端节点
+source ~/ros_test_ws/devel/setup.bash
+rosrun test_pkg level_server.py
+rosrun test_pkg level_client.py
+5.2.8 参数的编程应用
+1. yaml参数文件
+在ros中，如果需要修改的代码参数过多，一般会使用yaml文件
+在test_pkg功能包下创建文件夹config (如果有则无需创建)
+mkdir -p ~/ros_test_ws/src/test_pkg/config
+在文件夹scripts里面新建一个yaml文件,例如player.yaml
+示例为一些关于玩家的参数，包含有姓名，职业，等级，其中，左边为变量名，右边是变量对应的键值。
+在需要使用很多参数的工程，比如slam定位，会涉及到很多参数的修改，如果在代码内一点点修改会很麻烦，因此会使用到yaml文件，将需要修改的参数都列出来，一次性加载到parameter sever内，程序运行时get所需的参数来使用，并且也避免了修改c++代码后需要重新编译的问题。
+我们首先输入roscore，启动rosmaster，再开一个新窗口，输入rosparam list，查看当前参数服务器内的参数，然后输入rosparam load ~/ros_test_ws/src/test_pkg/config/player.yaml加载刚刚定义的参数文件，再输入一次rosparam list，发现多了三个yaml文件定义的参数。
+rosparam list
+rosparam load ~/ros_test_ws/src/test_pkg/config/player.yaml
+我们可以通过rosparam的get和set指令，来查看和更改参数
+rosparam get /pc_level
+rosparam set /pc_level 45
+参数的设置（set）与获取（get）（c++）
+1. 编写节点代码（c++）
+在功能包test_pkg的src文件夹里，新建一个cpp文件，作为一个参数读取设置节点程序。例如param_test.cpp。
+#include <ros/ros.h>
+#include <string>
+int main(int argc, char **argv)
+{
+std::string pn, pc;
+int pl;
+// ROS节点初始化
+ros::init(argc, argv, "param_test");
+// 创建节点句柄
+ros::NodeHandle n;
+// 读取玩家参数
+ros::param::get("/pc_name", pn);
+ros::param::get("/pc_class", pc);
+ros::param::get("/pc_level", pl);
+ROS_INFO("Get player config [%s, %s, %d]", pn.c_str(), pc.c_str(), pl);
+// 设置玩家参数
+ros::param::set("/pc_name", "Rhea");
+ros::param::set("/pc_class", "infantry");
+ros::param::set("/pc_level", 86);
+ROS_INFO("Set player config [Rhea, infantry, 86]");
+// 读取玩家参数
+ros::param::get("/pc_name", pn);
+ros::param::get("/pc_class", pc);
+ros::param::get("/pc_level", pl);
+ROS_INFO("Get new player config [%s, %s, %d]", pn.c_str(), pc.c_str(), pl);
+return 0;
+}
+2. 修改配置文件（c++）
+在构建完test_pkg功能包后，会在该文件夹中生成一个CMakeLists.txt，打开文件，在文件最后添加以下代码
+add_executable(param_test src/param_test.cpp)
+target_link_libraries(param_test ${catkin_LIBRARIES})
+3. 编译运行（c++）
+在命令行下，cd进入ros_test_ws文件夹，输入catkin_make编译工程。
+cd ~/ros_test_ws
+catkin_make
+编译成功后，输入roscore，启动rosmaster，再开一个新窗口，输入rosparam load ~/ros_test_ws/src/test_pkg/config/player.yaml加载定义的参数文件，再开一个新窗口，输入source ~/ros_test_ws/devel/setup.bash更新环境变量，再输入rosrun test_pkg param_test启动节点程序，完成参数的获取，修改，获取。
+rosrun test_pkg param_test
+通过输入rosparam get /pc_name，rosparam get /pc_class，rosparam get /pc_level，可以发现参数确实已被修改
+rosparam get /pc_name
+rosparam get /pc_class
+rosparam get /pc_level
+我们再接着修改player.yaml文件，修改pc_level为5并保存，重新输入rosparam load ~/ros_test_ws/src/test_pkg/config/player.yaml加载参数
+输入source ~/ros_test_ws/devel/setup.bash更新环境变量，再输入rosrun test_pkg param_test启动节点程序，可以看到，重新启动程序加载了新的参数，也就是如前文所说，如果直接再修改代码的参数，则需要重新编译，但通过rosparam就可以避免此麻烦，只需要修改参数文件即可
+3. 参数的设置（set）与获取（get）（python）
+1. 编写节点代码（python）
+在test_pkg功能包下创建文件夹scripts (如果有则无需创建)
+mkdir -p ~/ros_test_ws/src/test_pkg/scripts
+在文件夹scripts里面新建一个py文件，作为一个参数读取设置节点程序。例如param_test.py
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+# 导入ros的python接口
+import rospy
+def param_test():
+# ROS节点初始化
+rospy.init_node('param_test')
+# 读取参数
+pn = rospy.get_param('/pc_name')
+pc = rospy.get_param('/pc_class')
+pl = rospy.get_param('/pc_level')
+rospy.loginfo(f"Get player config [{pn}, {pc}, {pl}]")
+# 设置参数
+rospy.set_param("/pc_name", "Rhea")
+rospy.set_param("/pc_class", "infantry")
+rospy.set_param("/pc_level", 86)
+rospy.loginfo("Set player config [Rhea, infantry, 86]")
+# 读取参数
+pn = rospy.get_param('/pc_name')
+pc = rospy.get_param('/pc_class')
+pl = rospy.get_param('/pc_level')
+rospy.loginfo(f"Get new player config [{pn}, {pc}, {pl}]")
+if __name__ == "__main__":
+param_test()
+2. 运行（python）
+python文件无需编译，先给予文件可执行权限
+sudo chmod +x ~/ros_test_ws/src/test_pkg/scripts/*
+接着输入roscore，启动rosmaster，再开一个新窗口，输入rosparam load ~/ros_test_ws/src/test_pkg/config/player.yaml加载定义的参数文件，再开一个新窗口，输入source ~/ros_test_ws/devel/setup.bash更新环境变量，再输入rosrun test_pkg param_test.py启动节点程序，完成参数的获取，修改，获取。
+rosrun test_pkg param_test.py
+5.3 ROS的常用组件
+5.3.1 launch启动文件的使用方法
+在使用ros中，如果需要启动的节点太多，则需要打开很多个窗口，并且在多次的指令输入中也容易输错。而使用xml语法的launch文件则可以对ros节点文件进行管理，可一键启动多个节点文件、参数配置文件以及设置参数，并且在启动launch文件时也会自启动rosmaster。极大的减少了我们的操作。
+在test_pkg功能包下创建文件夹launch
+mkdir -p ~/ros_test_ws/src/test_pkg/launch
+在文件夹launch里新建一个.launch文件，例如ros_test.launch
+launch文件的启动命令格式为
+roslaunch <功能包名> <launch文件名>
+1. launch文件常用标签之<launch>
+根元素是XML文档中最外层、唯一的那个标签，所有其他标签都必须嵌套在它里面。
+在ROS的.launch 文件中，根元素必须是<launch>...</launch>。
+2. launch文件常用标签之<node>
+<node>的作用为启动某一个节点，格式为
+<node pkg="package-name" type="executable-name" name="node-name" />
+其中最常用的三个部分为：
+pkg：功能包的名字，在此例程中为test_pkg
+type：可执行文件，也就是要启动的节点文件，包括c++编译后的可执行文件和python脚本文件，在此例程在中为std_msg_publish.py和std_msg_subscribe.py
+name：节点名，重命名代码中rospy.init_node注册的节点名，在此例程在中为pub和sub
+其他还有：output、respawn、required、ns、args
+3. launch文件常用标签之<param>
+<param>的作用是设置ROS系统运行中的参数，存储在参数服务器中。格式为
+<param name="param-name"   value="param-value"/>
+其中name为参数名，value为参数值
+4. launch文件常用标签之<rosparam>
+<rosparam>的作用为加载参数文件中的参数，格式为
+<rosparam file="$(find test_pkg)/config/player.yaml" command="load"/>
+其中，file为yaml文件的路径
+5. launch文件常用标签之<arg>
+<arg>的作用为设置launch文件内部的局部变量，仅限于launch文件使用，格式为
+<arg name="arg-name" default="arg-value"/>
+其中name为参数名，default为参数值
+5.3.2 常用可视化工具的使用
+在运行ros程序时，终端输入工具指令即可
+1. rqt_console 查看各个节点的日志输出
+2. rqt_grap 查看各个节点话题之间的通信关系
+3. rqt_plot 数据绘图工具
+4. rqt_image_view 图像查看工具
+5. rviz 机器人开发过程中的数据可视化工具
+六、MAVLink
+6.1 MAVLink概述
+MAVLink 是一种非常轻量级的消息协议，用于与无人机通信（以及机载无人机组件之间）。
+MAVLink 遵循现代混合发布-订阅和点对点设计模式：数据流作为主题发送/发布，而配置子协议（如任务协议或参数协议）是点对点的重传。消息在 XML 文件中定义。
+每个 XML 文件都定义了特定 MAVLink 系统支持的消息集。大多数地面控制站和自动驾驶仪实现的参考消息集以 common.xml 定义（大多数方言都建立在此定义之上）。
+代码生成器从这些 XML 消息定义中为特定编程语言创建软件库，然后无人机、地面控制站和其他 MAVLink 系统可以使用这些软件库进行通信。生成的库通常是 MIT 许可的，因此可以在任何闭源应用程序中无限制地使用，而无需发布闭源应用程序的源代码。
+核心特点：
+（1）轻量级：
+·协议开销极小，适合资源受限的微控制器（如ARM Cortex-M系列）
+·消息头通常只有 6 字节，有效载荷最大为 255 字节。
+（2）跨平台与语言无关：
+·支持 C/C++、Python、Java、Rust 等多种语言。
+·可在 Linux、Windows、RTOS、裸机等平台上运行。
+（3）消息驱动：
+·所有通信基于预定义的消息类型（如 HEARTBEAT、GPS_RAW_INT、ATTITUDE 等）。
+·每条消息都有唯一的 ID 和固定结构，便于解析和校验。
+（4）支持多系统通信：
+·允许多个“系统”（如飞控、相机、地面站）在同一网络中共存。
+·每个系统有唯一的 system ID 和 component ID，实现精准路由。
+（5）可靠性和容错性：
+·包含 CRC 校验确保数据完整性。
+·虽然基于无连接的 UDP 或串口传输，但可通过应用层实现重传或确认机制。
+（6）开源与标准化：
+·协议规范和代码生成工具（如 mavgen）完全开源（MIT 许可证）。
+·被 PX4、ArduPilot、QGroundControl 等主流飞控和地面站广泛采用。
+使用场景：
+（1）飞控系统（Flight Controller） ↔ 地面站（Ground Control Station, GCS）
+·用途：实时监控、任务规划、参数配置、飞行控制。
+·典型消息：
+- HEARTBEAT：心跳包，表明设备在线
+- GLOBAL_POSITION_INT：经纬度、高度、速度
+- ATTITUDE：姿态角（俯仰、横滚、偏航）
+- MISSION_ITEM：上传/下载航点任务
+- PARAM_VALUE / PARAM_SET：读写飞控参数（如 PID 增益）
+·工具示例：
+QGroundControl、Mission Planner（基于 MAVLink 的 GCS 软件）
+（2）飞控 ↔ 机载计算机（Onboard Computer）
+·用途：视觉导航、SLAM、AI 决策、高级任务逻辑。
+·典型架构：
+-飞控（如 PX4）通过串口或UDP向树莓派/Jetson发送传感器数据
+- 机载计算机处理后发送控制指令
+·优势：解耦感知与控制，便于模块化开发。
+（3）多机协同与编队飞行
+·用途：多无人机协同搜索、灯光表演、物流运输。
+·实现方式：
+- 每架无人机有唯一 SYSID
+- 通过 MAVLink 广播或点对点通信交换位置、状态
+- 使用 COMMAND_LONG 或自定义消息协调动作
+（4）......
+在无人机平台的二次开发中，我们大多时候是在场景(2)下进行功能实现，我们接下来也会从机载电脑的角度，来介绍mavlink协议是如何在机载电脑上使用的。后面我们会从mavlink的协议解析，mavlink协议发送等几个方面，去进一步的了解和熟悉mavlink的使用。
+6.2 MAVLink协议内容
+6.2.1 版本说明
+MAVLink（Micro Air Vehicle Link）协议自 2009 年由 Lorenz Meier 首次提出以来，经历了多个重要版本的演进。目前主要存在 MAVLink v0.9、v1.0 和 v2.0 三个广泛使用的版本（其中 v0.9 已基本淘汰）。每个版本在兼容性、功能扩展、安全性、消息容量等方面都有显著差异。以下是对各版本的详细说明与对比分析，涵盖协议结构、设计目标、技术特性及适用场景。
+（1）MAVLink v0.9（早期实验版）
+·背景与定位
+- 发布时间：约 2009–2010 年
+- 目标：为早期微型无人机（如 Paparazzi、早期 PX4 原型）提供一种轻量通信机制
+- 状态：已废弃，仅存在于历史代码中，现代系统不再支持
+·协议特点
+- 消息 ID 为 8 位（0–255）
+- 消息头固定为 6 字节（STX + LEN + SEQ + SYSID + COMPID + MSGID）
+- CRC 校验使用简单校验和或早期 CRC 实现
+- 无标准化的消息定义管理机制
+·局限性
+- 缺乏版本控制字段，难以区分协议版本
+- 消息类型数量受限（最多 256 种）
+- 无扩展机制，无法支持未来功能（如安全、压缩等）
+当前所有主流飞控（PX4、ArduPilot）和地面站（QGC、Mission Planner）均不支持 v0.9。
+（2）MAVLink v1.0（首个稳定工业标准）
+·发布与标准化
+- 正式确立于 2011–2013 年
+- 成为 PX4、ArduPilot 等开源飞控项目的默认通信协议
+- 被广泛用于学术研究、商业无人机产品（如早期 DJI SDK 也参考其思想）
+·协议帧结构（共 6 + LEN + 2 字节）
+·核心优势
+- 轻量高效：最小消息仅 8 字节（如心跳包）
+- 跨平台：C 头文件可直接嵌入资源受限 MCU（如 STM32）
+- 生态成熟：配套工具链完善（mavgen 代码生成器、Wireshark 插件等）
+·主要限制
+- MSGID 仅 8 位：最多支持 256 种标准消息，无法满足日益增长的自定义需求
+- 无安全机制：无法防止消息伪造、重放攻击
+- 无扩展字段：无法向后兼容新增功能（如压缩、加密标记）
+（3）MAVLink v2.0（现代化增强版）
+·发布背景
+- 为解决 v1 的扩展性与安全性问题，于 2017 年前后正式推出
+- 被 PX4 v1.7+、ArduPilot v3.6+ 全面支持
+- 成为当前推荐使用的标准版本
+·协议帧结构（基础部分 10 + LEN + 2 字节，可选签名 +13）
+关键增强特性
+·24 位消息 ID
+- 打破 256 消息限制，支持：
+更多标准消息（如 UAVCAN 集成、电池监控扩展）
+用户自定义消息空间大幅扩展（避免冲突）
+·标志位机制（Flags）
+- INCOMPAT_FLAGS：若接收方不理解某 bit，必须丢弃该消息（保证协议严格性）
+- Bit 0：启用签名（security）
+- COMPAT_FLAGS：若不理解，可忽略（用于非关键扩展）
+·消息签名（Security Feature）
+- 目的：防止中间人攻击、指令伪造、重放攻击
+- 结构（13 字节）：
+link_id（1B）：通信链路标识
+timestamp（6B）：微秒级时间戳（防重放）
+signature（6B）：基于 HMAC-MD5 或类似算法的签名（需预共享密钥）
+·启用条件：发送方设置 INCOMPAT_FLAGS |= 0x01
+·更好的 CRC 覆盖范围
+CRC 计算包含：LEN、FLAGS、SEQ、SYSID、COMPID、MSGID（3B）、PAYLOAD
+比 v1 更全面，减少误判概率
+·向后兼容设计
+虽然 STX 不同（0xFD vs 0xFE），但解析器可通过检测首字节自动识别版本
+多数现代库（如 pymavlink、mavros）同时支持 v1 和 v2
+6.2.2 MAVLink v1.0消息包解析
+字段
+长度
+值/说明
+STX
+1B
+0xFE（起始标志）
+LEN
+1B
+Payload 长度（0–255）
+SEQ
+1B
+包序号（用于丢包检测）
+SYSID
+1B
+系统 ID（1–255）
+COMPID
+1B
+组件 ID（如飞控=1，相机=100）
+MSGID
+1B
+消息类型 ID（0–255）
+PAYLOAD
+LEN
+实际数据（小端序）
+CRC
+2B
+CRC16-CCITT 校验（初始值 0xFFFF）
+6.2.3 MAVLink v2.0消息包解析
+字节偏移
+字段名
+长度
+0
+STX
+1B
+1
+LEN
+1B
+2
+INCOMPAT_FLAGS
+1B
+3
+COMPAT_FLAGS
+1B
+4
+SEQ
+1B
+5
+SYSID
+1B
+6
+COMPID
+1B
+7–9
+MSGID
+3B
+10–(9+LEN)
+PAYLOAD
+LEN
+(10+LEN)–(11+LEN)
+CRC
+2B
+(12+LEN)–(24+LEN)
+SIGNATURE
+13B
+与V1.0的不同点：
+（1）INC FLAGS（Incompatibility flags）：此标志位会影响包的结构，标志指示数据包是否包含某些在分析数据包时必须考虑的功能。 例如，不兼容标志等于0x01表示该数据包已签名，并且在数据包的末尾附加了签名；
+（2）CMP FLAGS（compatibility ﬂags）：不影响包的结构，它指示如果没有理解，可以忽略的标志，即使无法解释标志，也不会阻止解析器处理消息；
+（3）Message ID (MSGID)：相较于V1.0版本的8位变为24位，它允许在MAVLink 2.0中使用更多类型的消息，最多可以达到16777215种类型；
+（4）可选用的SIGNATURE：最后，MAVLink 2.0使用可选的13字节签名域来确保链接是防篡改的。 此功能显着改善了MAVLink 1.0的安全性，因为它允许对消息进行身份验证并验证消息源自受信任的源。 如果不兼容标志设置为0x01，则会附加消息的签名；
+（5）STX：1.0版本中为0XFE，2.0版本中为0XFD。
+6.2.4 心跳包机制
+心跳包（Heartbeat）机制 是整个通信体系中最基础、最关键的组成部分之一。它不仅用于维持通信链路的活跃状态，还承担着系统身份识别、运行模式通告、状态监控和故障检测等多重功能。可以说，没有正确实现心跳包机制，MAVLink 网络中的设备将无法被其他节点“看见”或“信任”。
+在MAVLink通信的过程中，心跳包以固定的频率进行发送，接收方通过是否持续接收到该包来判断发送方是否还在线。
+例如，在室内飞行的场景中，飞控和机载电脑在进行通信，飞控通过mavlink协议从机载电脑那边获取实时的定位信息(SLAM)，在某一时刻可能突发状况，导致机载电脑和飞控的连接断开(物理连接)，这时候飞控就可以凭借这心跳包的丢失做出快速响应，切换定位源，改用光流定位并切换到悬停模式，保障无人机的安全，降低炸机风险。
+6.3 MAVLink库的安装
+MAVLink 协议本身只定义了消息格式（字段、ID、数据类型等），但要在具体语言中使用，需要：
+·将结构体数据 打包（serialize） 成二进制字节流；
+·从接收到的字节流中 解包（deserialize） 出结构体。
+不过官方提供了Mavgen用于生成底层通信协议代码，我们在使用的过程中就无需关注消息包本身的编码和解码过程。且Mavgen支持多种语言的库：
+·C
+·Python ("Pymavlink")
+·C++11
+·C#
+·Java
+·JavaScript
+·Lua
+·Objective C
+·Swift
+MAVLink官网：https://mavlink.io/zh/
+Pymavlink库可与Python 2.7或Python 3.5+ 一起使用，并支持MAVLink 1 和 MAVLink 2版本。
+1. 安装依赖
+sudo  apt  update
+sudo  apt  install  libxml2-dev  libxslt1-dev  python3-dev
+2. 安装pymavlink
+pip3  install  pyserial
+pip3  install  pymavlink
+指令查看安装的包
+pip3  list
+3. 测试使用
+在命令行中输入python3，进入解释器的交互模式
+输入from pymavlink import mavutil，如果没有输出，说明正常导入模块
+4. 卸载pymavlink
+pip  uninstall  pymavlink
+6.4 Pymavlink的使用
+pymavlink 包中的模块集合如下：
+·\dialects\v20\* and \dialects\v10\*：分别对应MAVLink v2和v1的每个源XML消息定义的方言模块。每个方言模块包含
+- XML文件中定义的所有枚举和枚举值的常量。
+- 一组用于消息标识符的常量。
+- 这是XML文件中定义的每种MAVLink消息类型的一类。
+- 一个MAVLink类，可用于发送和接收消息：
+* 每个消息类型都有_send和_decode函数。
+* 有检测和应用签名的方法。
+* 具有更低层次的数据打包和解析方法。
+·mavutil：MAVLink 工具函数，用于建立通信链路、接收和解码消息、执行周期性任务等。
+- mavutil.mavlink_connection(device, baud, ...)用于设置链路，用于（最初）监听消息或在通道上发送消息（例如 UDP、串口 等）。这返回一个表示连接的对象。你可以使用：
+* 用于访问所选方言/协议模块以编码和发送消息的属性mav
+* setup_signing()用于设置签约
+* recv_match()用于捕获具有特定名称或字段值的消息
+-这个连接还能让你做很多其他有用的工作：获取所有自动驾驶仪参数，访问每种类型的最新消息，获取自动驾驶仪的遥测数据，包括当前飞行模式或武装状态等。
+·MAVWP：加载/保存路径点、地理围栏、集合点。
+·mavparm：MAVLink参数的加载/保存集。
+·mavextra：用于转换数值和消息的有用函数（例如将米/秒转换为公里/小时，将弧度欧拉从四元数等）。
+·MAVEXPRESSION（内部）：MAVLink 表达式评估函数。
+6.4.1 建立连接 -- mavlink_connection()
+mavutil 模块提供了通过串口、TCP 或 UDP 通道与 MAVLink 系统建立通信链路的方法。它还能连接到文件对象，这在处理遥测日志时非常有用。
+语法：
+mavlink_connection([protocol:]address[:port])
+参数：
+·protocol(可选参数)：IP协议，如果未指定，pymavlink会尝试判断该地址是串口还是文件，如果都不是，则默认使用UDP地址。
+- tcp：在指定的address和port上初始化一个TCP连接
+- tcpin：监听指定的address和port上的TCP连接
+- udpin：监听指定的address和port上的UDP连接
+- udpout：在指定的address和port上初始化一个UDP连接
+- udp：在默认情况下，与udpin  input=False  udpout这样的参数设置相同
+- udpcast：广播UDP地址和端口，这与udp  input=Falseb  roadcast=True这样的参数设置相同
+·address：IP地址、串口名、文件名
+·port：IP端口(仅当address为IP地址时)
+参数设置举例（实际情况要根据连接方式判断）：
+（vehicle 在不同的场景下可能不同，在无人机上大多数情况指的是飞控系统）
+连接类型
+连接参数(字符串)
+机载电脑连接飞控 -- 通过USB0
+/dev/ttyUSB0
+机载电脑连接飞控 -- 通过串口ACM0
+/dev/ttyACM0,baud=57600
+MAVLink API 通过 UDP 监听 SITL 连接
+udpin:localhost:14540 或udp:localhost:14540(localhost为IP地址)
+MAVLink API 通过 UDP 发起与 SITL 的连接
+udpout:localhost:14540或udpout:127.0.0.1:14540
+GCS通过UDP连接到vehicle
+127.0.0.1:14550或udp:localhost:14550
+SITL通过TCP连接到vehicle
+tcp:127.0.0.1:5760（仅支持 ArduPilot，PX4 不支持 TCP）
+OSX电脑通过USB连接到vehicle
+dev/cu.usbmodem1
+Windows电脑通过USB连接到vehicle（COM14）
+com14
+Windows电脑通过3DR遥测无线电连接到车辆（COM14）
+com14（也设定baud=57600)
+注意：
+虽然 MAVLink 并未明确规定用于不同用途的 UDP 端口，但存在一个事实上的标准：MAVLink API 应在 UDP 端口 14540 上监听 SITL（软件在环）连接，而地面站（GCS）则应在 UDP 端口 14550 上监听连接。
+示例：
+在我们的无人机上，使用的是串口，连接机载电脑与飞控系统。我们编写一个python程序，用来建立mavlink连接。
+STEP-1：创建python文件
+命令行输入：
+mkdir  ~/mavlink_test&& cd  ~/mavlink_test      # 创建并进入目录
+vim  1_connection.py        # 使用vim创建并编辑1_connection.py文件
+STEP-2：编辑内容
+# 1_connection.py
+from pymavlink import mavutil
+serial_port = "/dev/ttyTHS0"
+baud_rate = 921600
+# Start a connection
+the_connection = mavutil.mavlink_connection(serial_port, baud_rate)
+# Wait for the first heartbeat
+#   This sets the system and component ID of remote system for the link
+the_connection.wait_heartbeat()
+print("Heartbeat from system (system %u component %u)" % (the_connection.target_system, the_connection.target_component))
+# Once connected, use 'the_connection' to get and send messages
+STEP-3：设置执行权限
+这时候如果使用 ls -l 指令，会发现文件没有执行权限。我们需要使用chmod指令设置执行权限，然后才能运行该python文件。
+sudo  chmod  +x  1_connection.py
+STEP-4：执行程序
+python3  1_connection.py
+发现会报错：
+所以需要先设置 /dev/ttyTHS0 的权限
+sudo  chmod  777  /dev/ttyTHS0
+然后再执行python程序
+python3  1_connection.py
+上面的图中是连接成功后的输出，根据获取到的心跳包，解析出当前飞控的系统ID为1，组件ID为0。这一点很重要，后面我们需要这个系统ID和组件ID来实现想飞控发送消息。
+6.4.2 发送消息 -- <message_name>_send()
+在上一小节中，我们建立了mavlink通信连接，并打印了飞控的系统ID和组件ID，等待心跳包的接收。同样，我们也需要发送心跳包，这样飞控才能确认机载电脑的通信是保持连接的状态。我们的第一个例子就是向飞控发送心跳包。
+发送心跳包的函数为heartbeat_send()
+MAVLink.heartbeat_send()方法定义如下：
+def heartbeat_send(self, type, autopilot, base_mode, custom_mode, system_status, mavlink_version=3, force_mavlink1=False):
+'''
+The heartbeat message shows that a system is present and responding.
+The type of the MAV and Autopilot hardware allow the
+receiving system to treat further messages from this
+system appropriate (e.g. by laying out the user
+interface based on the autopilot).
+type            : Type of the MAV (quadrotor, helicopter, etc.) (type:uint8_t, values:MAV_TYPE)
+autopilot        : Autopilot type / class. (type:uint8_t, values:MAV_AUTOPILOT)
+base_mode      : System mode bitmap. (type:uint8_t, values:MAV_MODE_FLAG)
+custom_mode    : A bitfield for use for autopilot-specific flags (type:uint32_t)
+system_status    : System status flag. (type:uint8_t, values:MAV_STATE)
+mavlink_version  : MAVLink version, not writable by user, gets added by protocol because of magic data type: uint8_t_mavlink_version (type:uint8_t)
+'''
+我们会发现，heartbeat_send()函数的命名满足<message_name>_send()规则，那么我们如果想发送其他消息呢？我们又该如何去查询？
+打开浏览器，搜索MAVLink官网，或访问https://mavlink.io/zh/，首页的顶栏有一个Messages功能栏，点进去。
+你会进入官方提供的标准消息集中，在这里可以查询到通用的消息ID，以及每个消息ID的内容组成。
+如图，可以看到第一个Message就是heartbeat，也就是我们一直提到的心跳包。
+表格中的内容就是我们调用heartbeat_send()时，需要放入的参数。到了这一步，你可能还是不知道具体参数该怎么填写，不要慌，我们按照顺序看一看所有的参数。
+参数一：type
+表格的第二列是数据类型，第三列是值的定义，第四列是参数的描述信息。我们先来看描述，这里面说这个类型是为了区分是不是飞控系统中的组成，这个区分优先于组件ID的区分。
+再来看第三列MAV_TYPE，使用鼠标选中这个字符串，然后在键盘上按下 ”Ctrl + F”，来搜索MAV_TYPE的定义。如下图，当然这个图没有截全，感兴趣的可以直接去MAVLink官网上看完整的表格，我们来看描述：在HEARTBEAT message中描述mavlink组件类型。我们需要按照表格中的内容对号入座，然后就知道我们在该位置应该填写什么值。
+我们根据表格，可以发现我们的机载电脑应该属于
+18(MAV_TYPE_ONBOARD_CONTROLLER)，当然我们也可以选择6(MAV_TYPE_GCS)。
+那么我们的第一个参数就应该是
+18(mavutil.mavlink.MAV_TYPE_ONBOARD_CONTROLLER)
+参数二：autopilot
+我们还是用鼠标选中该字符串，然后利用快捷键”Ctrl + F”进行搜索。如下图，可以看到该参数的作用是表明是不是自动驾驶仪，如果是非自动驾驶仪，我们应该使用8(MAV_AUTOPILOT_INVALID)，
+当然我们也可以使用0(MAV_AUTOPILOT_GENERIC)。
+参数三、四：base_mode 和 custom_mode
+用于描述飞行器当前的飞行模式和状态。这里我们不需要设置，所以置0即可。
+参数五：system_status
+知道了查询方法和参数的定义，我们就可以开始编写一个具有发送小消息包功能的程序了。
+示例：
+创建串口通信，以1Hz的循环向飞控发送心跳包
+STEP-1：创建python文件
+命令行输入：
+cd  ~/mavlink_test      # 创建并进入目录
+vim  2_sendMsg.py        # 使用vim创建并编辑2_sendMsg.py文件
+STEP-2：编辑内容
+# 2_sendMsg.py
+#!/usr/bin/env python3
+"""
+机载电脑（Companion Computer）示例：
+- 通过串口连接飞控
+- 每秒发送一次心跳（HEARTBEAT）
+- 按 Ctrl+C 退出
+"""
+from pymavlink import mavutil
+import time
+import signal
+# 全局运行标志
+running = True
+def signal_handler(sig, frame):
+global running
+print("\n 收到退出信号，正在关闭...")
+running = False
+def main():
+global running
+# 注册信号处理器
+signal.signal(signal.SIGINT, signal_handler)
+# === 配置串口 ===
+serial_port = "/dev/ttyTHS0"
+baud_rate = 921600
+# 创建连接：作为机载电脑（component_id=190），共享 system_id=1
+try:
+master = mavutil.mavlink_connection(
+serial_port,
+baud=baud_rate
+)
+except Exception as e:
+print(f" 无法打开串口: {e}")
+return
+print(" 已连接飞控。开始发送心跳（1Hz）...")
+next_heartbeat = time.time()
+while running:
+# === 1. 发送心跳（1Hz）===
+now = time.time()
+if now >= next_heartbeat:
+master.mav.heartbeat_send(
+type=mavutil.mavlink.MAV_TYPE_ONBOARD_CONTROLLER,  # 机载电脑类型
+autopilot=mavutil.mavlink.MAV_AUTOPILOT_INVALID,   # 不是自动驾驶仪
+base_mode=0,
+custom_mode=0,
+system_status=mavutil.mavlink.MAV_STATE_ACTIVE
+)
+next_heartbeat = now + 1.0
+print(f" 心跳已发送{next_heartbeat}", end="\r", flush=True)
+# 短暂休眠，避免 CPU 占用过高
+time.sleep(0.01)
+print("\n  机载电脑程序已退出。")
+if __name__ == "__main__":
+main()
+STEP-3：设置执行权限
+sudo  +x  2_sendMsg.py           # 设置python文件的可执行权限
+sudo  chmod  777  /dev/ttyTHS0   # 设置串口的读写权限
+STEP-4：运行python程序
+python3  2_sendMsg.py
+6.4.3 接收消息
+Mavlink提供接收消息的方法有两种，第一种是同步接收某个特定类型的最后一条消息，以及它何时收到，可以用连接的字典来实现；第二种是等待当前connection的所有消息并在消息到达时拦截它们。
+在一般的使用中，比较推荐实用方式二。因为在实际的使用中，我们可能会需要获取不止一条不止一类的数据，且频率数据量都不一样，所以使用方式二更容易支持获取多种且大量的mavlink消息。
+方式一：同步获取特定类型的最后一条消息 -- mavutil.messages
+try:
+altitude = the_connection.messages['GPS_RAW_INT'].alt  # Note, you can access message fields as attributes!
+timestamp = the_connection.time_since('GPS_RAW_INT')
+except:
+print('No GPS_RAW_INT message received')
+可以看到，这里使用了messages去获取指定消息类型GPS_RAW_INT的数据，并且使用time_since获取获取距离上次 GPS_RAW_INT 的时间（秒）。
+而这个GPS_RAW_INT，我们如果需要知道详情，就可以根据上一个小节中查询消息包内容的方式来进行查询。如图：
+就可以知道altitude = the_connection.messages['GPS_RAW_INT'].alt 的意思就是获取最后一条GPS_RAW_INT 类型的消息，且取其中的alt属性赋值给变量altitude。
+方式二：等待消息并拦截
+def recv_match(self, condition=None, type=None, blocking=False, timeout=None):
+'''Receive the next MAVLink message that matches the given type and condition
+type:        Message name(s) as a string or list of strings - e.g. 'SYS_STATUS'
+condition:   Condition based on message values - e.g. 'SYS_STATUS.mode==2 and SYS_STATUS.nav_mode==4'
+blocking:    Set to wait until message arrives before method completes.
+timeout:     ? <!-- timeout for blocking message when the system will return. Is this just a time? -->
+'''
+参数一：type
+消息类型的字符串，就比如上一个例子中的GPS_RAW_INT，注释中举得例子SYS_STATUS。当我收到一个消息时，根据type的值取拦截我需要的那一条消息，其他的都丢弃。
+参数二：condition
+拦截带有特定属性值的特定消息，该参数的使用要配合参数一(type)，不能单独设置condition而不设置type，或者设置的type和condition不是同一类型的。按注释中的例子来说，我需要获取SYS_STATUS类型的消息，且需要SYS_STATUS.mode==2 and SYS_STATUS.nav_mode==4 这些特定的属性值，此时就可以正确拦截。
+# Wait for a 'SYS_STATUS' message with the specified values.
+msg = the_connection.recv_match(type='SYS_STATUS', condition='SYS_STATUS.mode==2 and SYS_STATUS.nav_mode==4', blocking=True)
+参数三：blocking
+布尔类型的参数，如果为True，那么在获取到消息值之前，该方法的执行不会结束。
+如果为False，如果运行到这里，没有获取到消息，那么返回一个None，方法执行结束，继续进行后面的程序执行。
+msg = the_connection.recv_match(blocking=True)
+参数四：timeout
+设置超时时间，单位：秒(s)。
+仅在blocking=True时生效，超时以后，如果还没有获取到消息，那么程序将跳出阻塞，返回None，继续执行后面的程序。
+示例：
+建立串口通信，以1Hz的循环发布话题并且接收RC的消息
+STEP-0：查询RC的消息类型及定义
+STEP-1：创建python文件
+cd  ~/mavlink_test      # 创建并进入目录
+vim  3_recv.py         # 使用vim创建并编辑3_recv.py文件
+STEP-2：编辑内容
+#!/usr/bin/env python3
+"""
+机载电脑（Companion Computer）示例：
+- 通过串口连接飞控
+- 每秒发送一次心跳（HEARTBEAT）
+- 按 Ctrl+C 退出
+"""
+from pymavlink import mavutil
+import threading
+import time
+import signal
+# 全局运行标志
+running = True
+def signal_handler(sig, frame):
+global running
+print("\n 收到退出信号，正在关闭...")
+running = False
+def uav_topic_pub(the_connection):
+global running
+while running:
+uav_msg = the_connection.recv_msg()
+# uav_msg = the_connection.messages['RC_CHANNELS']
+if not uav_msg:
+continue
+if uav_msg.get_type() == "RC_CHANNELS":
+# print(f"RC: {uav_msg.chan3_raw}")
+rc_str = f"[遥控器数据] 通道数:{uav_msg.chancount} CH1:{uav_msg.chan1_raw} CH2:{uav_msg.chan2_raw} CH3:{uav_msg.chan3_raw} CH4:{uav_msg.chan4_raw} CH5:{uav_msg.chan5_raw} CH6:{uav_msg.chan6_raw} CH7:{uav_msg.chan7_raw} CH8:{uav_msg.chan8_raw}"
+print(f"\r{rc_str:<80}", end=" ", flush=True)
+def main():
+global running
+# 注册信号处理器
+signal.signal(signal.SIGINT, signal_handler)
+# === 配置串口 ===
+serial_port = "/dev/ttyTHS0"
+baud_rate = 921600
+try:
+the_connection = mavutil.mavlink_connection(
+serial_port,
+baud=baud_rate
+)
+the_connection.wait_heartbeat()
+print("Heartbeat from system (system %u component %u)" % (the_connection.target_system, the_connection.target_component))
+except Exception as e:
+print(f" 无法打开串口: {e}")
+return
+thread_uav_msg = threading.Thread(target=uav_topic_pub, args=(the_connection,))
+thread_uav_msg.start()
+next_heartbeat = time.time()
+while running:
+# === 1. 发送心跳（1Hz）===
+now = time.time()
+if now >= next_heartbeat:
+the_connection.mav.heartbeat_send(
+type=mavutil.mavlink.MAV_TYPE_ONBOARD_CONTROLLER,  # 机载电脑类型
+autopilot=mavutil.mavlink.MAV_AUTOPILOT_INVALID,   # 不是自动驾驶仪
+base_mode=0,
+custom_mode=0,
+system_status=mavutil.mavlink.MAV_STATE_ACTIVE
+)
+next_heartbeat = now + 1.0
+# print(f" 心跳已发送{next_heartbeat}", end="\r", flush=True)
+# 短暂休眠，避免 CPU 占用过高
+time.sleep(0.01)
+print("\n  机载电脑程序已退出。")
+thread_uav_msg.join()
+if __name__ == "__main__":
+main()
+STEP-3：设置权限
+cd  ~/mavlink_test/
+sudo  chmod  +x  3_recv.py
+sudo  chmod  777  /dev/ttyTHS0
+STEP-4：执行python程序
+cd  ~/mavlink_test/
+python3  3_recv.py
+此时，拨动遥控器，可以看到数值实时变化。(如果数值没有数值或者数值没变化，请检查遥控器是否开启)
+七、硬件驱动及使用
+本章节程序均在ros环境下运行，测试程序位于sensor_examples功能包内
+7.1 Unitree L2激光雷达
+7.1.1 Unitree L2介绍
+1. 硬件参数
+型号
+L2
+激光波长
+905nm
+人眼安全等级[1]
+Class 1(IEC60825-1:2014) 人眼安全
+最大量程[2]
+30M（@90% 反射率）15M（@10% 反射率）
+近处盲区[3]
+0.05m
+FOV
+360°* 90°/360°* 90°(负角度模式)
+采样频率
+128000 点 / 秒
+有效频率
+64000 点 / 秒
+扫描方式
+无接触无刷转镜扫描
+4D 信息
+3D 位置 +1D 灰度(支持2D模式)[4]
+周向扫描频率
+5.55Hz(可定制调节)[5]
+竖直扫描频率
+216Hz
+通讯接口
+ENET UDP和TTL UART
+通信波特率
+4000000 bps(TTL UART)
+测量精度[6]
+≤2.0cm
+角分辨率
+0.64°
+测距分辨率
+4.5mm
+IMU采样率
+1KHz
+IMU上报频率
+500Hz
+姿态感知维度
+3 轴加速度 +3 轴陀螺仪
+LED 灯环分辨率
+60°
+LED灯环刷新率
+5.55Hz
+抗强光能力
+100Klux
+工作环境温度[7]
+-10℃~50℃
+存储环境温度
+-20℃~60℃
+防护等级[8]
+IP54
+功率[9]
+10W（环境温度 25℃）
+工作电压
+12V DC
+尺寸
+75（宽）x75（深）x65（高）mm
+重量
+230g
+[1] 激光器的瞬间峰值功率为 25W，实际使用时平均功率将远低于此值，并采用脉冲方式驱动仅在极短的时间内进行发射动作，从而确保对人类及宠物的安全性，达到 Class I 级别的激光器安全标准。[2] 此处仅展示了反射率典型值，实际值取决于环境条件及目标物体特性。[3] 若目标物体距离 0.05m 时，激光探测测距仪可探测并输出点云数据，但由于无法保证探测精度，此数据仅供参考。[4] 2D 模式下角度范围为 180°或者 192°（负角度模式），有效频率仍为 64000 点 / 秒。[5] 定制周向扫描频率对采购数量有一定要求。L2下电机转速的定制范围为4~10Hz，同时需注意：转速越高震动和噪声越大，动态性能越好，不容易停转，更适合应用在动态应用场景中；转速越低震动和噪声越小，动态性能越差，容易停转，更适合应用在类似监控这种静态应用场景中；转速高低不影响点云数据量，只要安装牢固，对雷达性能影响可忽略；转速变化影响功耗，参数表中的功耗在5.55HZ下测得。[6] 为保证对量程内不同反射率物体的有效探测，个别位置可能会出现点云精度轻微下降的现象。测试条件为环境温度 25℃，目标物体反射率 90%，测试距离 15m。[7] 在高温和低温环境、强烈振动、大雾天气等环境下，L2 性能将有小幅下降。此外，长期高温工作可能会影响产品性能甚至造成产品损坏。建议用户增加散热措施，保证底盖温度不超过85℃。若温度过高将会触发过温保护机制，L2 会发出超温警告，严重超温时 L2 将停止运行。[8] 在不同安装⻆度下，L2 的防护效果差异较大，请根据实际安装⻆度， 自行增加外部防护 ; 由于安装或自行外部防护不当导致的损坏，不在保修范围之内。[9] 不同环境下的稳定功率和峰值功率不同 , 当环境温度范围为 -10℃至 30℃时，L2 将自动运行自加热模式，待温度满足要求后才会出点云，且此时峰值功率可达 13W，请合理设计供电电源，保证设备正常工作。
+2. 连接方法
+通过串口ttyS0进行连接
+3. 作用
+在本设备中，Unitree L2激光雷达主要用于SLAM定位。通过与IMU数据融合输出定位信息。
+4.坐标系
+激光雷达的坐标系定义如下图所示，它满足右手坐标系的定义。
+激光雷达点云坐标系的原点位于激光雷达底部安装面的中心，其+X轴与底部线缆出线方向相反，其+Y轴是通过将+X轴逆时针旋转90度得到的，其+Z轴垂直底面向上。
+7.1.2 Unitree L2相关SDK及ROS包安装
+出场设备均已安装Unitree L2相关SDK及ROS包
+7.1.3 Unitree L2的参数配置及启动
+1. 找到Unitree L2的ROS驱动包和相关配置文件
+在终端输入rospack find unitree_lidar_ros，使用rospack find来寻找功能包unitree_lidar_ros的路径，如图所示功能包在
+/home/orangepi/Unitree_L2/unilidar_sdk2-2.0.4/unitree_lidar_ros/src目录下。
+设备不同，路径可能不一样。
+rospack find unitree_lidar_ros
+如果显示“[rospack] Error: package 'pkg_mane' not found”，可能是没有source环境导致的，可以换成以下指令，将my_robot_pkg替换为要寻找的功能包名，然后比照上图找到正确的路径。
+find /opt/ros/*/share ~/ -type d -name "my_robot_pkg" 2>/dev/null
+找到功能包中，config文件夹下的config.yaml文件，这个文件就是Unitree L2激光雷达的ROS驱动包的配置文件。
+2. 配置文件参数
+注：未提及的其他参数，除非完全理解，否则不建议更改。
+（1）initialize_type
+含义：雷达的连接方式
+说明：1--串口连接；2--UDP网络连接
+（2）work_mode
+含义：雷达的工作模式
+说明：工作模式的设置是通过一个的uint32_t整型变量实现，其每一个bit位对应一个功能的切换。按照Bit位置从低到高，每一位0或1对应的功能如下表所示：
+比特位
+功能
+取值0
+取值1
+0
+切换标准FOV和广角FOV
+标准视野（180°）
+广角视野（192°）
+1
+切换3D和2D测量模式
+3D测量模式
+2D测量模式
+2
+使能或关闭IMU
+使能IMU
+关闭IMU
+3
+切换网口模式和串口模式
+网口模式
+串口模式
+4
+切换激光雷达上电默认启动模式
+上电即自行启动
+上电保持不转动并等待启动命令
+5-31
+保留
+保留
+保留
+常用的使用模式为标准FOV+3D测量+使能IMU+上电自启动，即这几个bit位置均保持为0即可，我们只需要确定是使用网口连接模式还是串口连接模式。
+如果使用网口连接模式，则将工作模式配置为0（即整型变量的所有bit位置均等于0，二进制数为0000 0000 0000 0000 0000 0000 0000 0000）
+如果使用串口连接模式，则将工作模式配置为8（即整型变量的第3个bit位置设为1，其余位的bit位置均设为0，二进制数为0000 0000 0000 0000 0000 0000 0000 1000）
+（3）use_system_timestamp
+含义：是否使用 主机系统时间戳（而不是 LiDAR 自带的时间戳）作为点云/IMU 消息的时间
+说明：一般不用改
+（4）range_min和range_max
+含义：雷达点云的有效距离范围（m）
+说明：会自动过滤掉小于 range_min 或大于 range_max 的点
+（5）cloud_scan_num
+含义：每帧点云包含的 扫描线数
+说明：对于机械雷达，这个值应匹配硬件
+（6）serial_port
+含义：连接的 串口设备路径
+说明：本设备使用的串口一般为ttyS0
+（7）baudrate
+含义：串口波特率
+说明：必须与 LiDAR 固件设置一致，否则无法通信
+3. 启动功能包
+在找到config配置文件，了解并配置了相关参数后，我们就可以来启动了。
+我们在终端使用roslaunch指令启动run_without_rviz.launch文件，完成启动。
+roslaunch unitree_lidar_ros run_without_rviz.launch
+接着新开一个终端，使用rostopic list指令查看当前话题。
+rostopic list
+使用rostopic hz /unilidar/cloud和rostopic echo /unilidar/cloud这两个指令查看雷达点云话题/livox/lidar的频率和数据。
+rostopic hz /unilidar/cloud
+rostopic echo /unilidar/cloud
+此时，我们就完成了从插入硬件到使用ROS驱动发布Unitree L2点云数据的全部步骤，接下来就可以根据需要来使用话题数据了。
+7.1.4 Unitree L2数据的应用
+要应用传感器数据，首先需要获取到传感器数据，因此，提供一个简单的数据获取示例代码。
+在sensor_examples功能包scripts目录下创建代码文件L2_data.py。
+编写代码，通过以下代码，我们简单的完成了ros节点的创建，订阅者的注册，订阅到数据后回调函数的具体处理，也就是通过sensor_msgs.point_cloud2.read_points（）函数将订阅到的PointCloud2数据进行解析并打印部分结果（解析出来的每个点的xyz等数据）。我们也可以自己通过fields属性内对点云数据的定义，自己从data解析点云。
+首先驱动雷达
+roslaunch unitree_lidar_ros run_without_rviz.launch
+接着启动示例代码
+rosrun sensor_examples L2_data.py
+激光雷达的坐标系定义如下图所示，它满足右手坐标系的定义。
+激光雷达点云坐标系的原点位于激光雷达底部安装面的中心，其+X轴与底部线缆出线方向相反，其+Y轴是通过将+X轴逆时针旋转90度得到的，其+Z轴垂直底面向上。
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+# 导入ROS的Python客户端库
+import rospy
+# 导入点云消息类型
+from sensor_msgs.msg import PointCloud2
+# 导入用于解析PointCloud2数据的工具函数
+import sensor_msgs.point_cloud2 as pc2
+def cloud_callback(msg):
+"""
+回调函数，处理来自激光雷达的点云数据
+:param msg: 接收到的sensor_msgs/PointCloud2类型消息
+"""
+# 打印接收到的点云总点数（height * width）
+rospy.loginfo("Received a point cloud with %d points", msg.width * msg.height)
+# 定义需要解析的字段名称列表，顺序需与点云中fields定义一致
+field_names = ["x", "y", "z", "intensity", "ring", "time"]
+# 使用pc2.read_points读取指定字段的数据，并跳过包含NaN的无效点
+points = pc2.read_points(msg, field_names=field_names, skip_nans=True)
+# 初始化计数器，最多打印5个点
+count = 0
+max_print = 5
+# 遍历解析出的每个点
+for point in points:
+# 解包每个字段：x, y, z为坐标，intensity为反射强度，ring为激光线号，time为点级时间戳（相对偏移）
+x, y, z, intensity, ring, t = point
+# 打印当前点的详细信息
+rospy.loginfo(
+"Point %d: x=%.3f, y=%.3f, z=%.3f, intensity=%.1f, ring=%d, time=%.6f",
+count, x, y, z, intensity, ring, t
+)
+# 计数器递增
+count += 1
+# 达到最大打印数量后退出循环
+if count >= max_print:
+break
+rospy.loginfo("--- End of sample points ---\n")
+def main():
+# 初始化的ROS节点
+rospy.init_node('L2_subscriber')
+# 创建订阅者
+rospy.Subscriber("/unilidar/cloud", PointCloud2, cloud_callback)
+# 打印提示信息
+rospy.loginfo("Subscribing to /unilidar/cloud ...")
+# 保持节点活跃
+rospy.spin()
+if __name__ == '__main__':
+try:
+main()
+except rospy.ROSInterruptException:
+pass
+7.1.5 Unitree L2补充说明
+1.上电自启动问题（建议都进行修改）
+Unitree L2激光雷达默认会上电自启动，在无人机上电时，可能会影响飞控的初始化，因此，在此说明解决方法。
+（1）找到雷达ros驱动的config.yaml文件，将work_mode: 12改为work_mode: 28，设置为上电不启动。
+（2）找到/unilidar_sdk2-2.0.4/unitree_lidar_ros/src/unitree_lidar_ros/include/路径下的unitree_lidar_ros.h文件，在150行左右图示位置添加所框选的代码，添加好后保存，
+使用cd /home/orangepi/Unitree_L2/unilidar_sdk2-2.0.4/unitree_lidar_ros/进行路径跳转（路径不对请查找相似路径），然后运行catkin_make进行编译。
+（3）打开主目录下的self_start.sh文件，在图示位置酌情增大时间，如改为sleep 15，确保雷达已完成驱动。
+（4）在终端先source环境
+source /home/orangepi/Unitree_L2/unilidar_sdk2-2.0.4/unitree_lidar_ros/devel/setup.bash
+然后运行雷达驱动roslaunch unitree_lidar_ros run_without_rviz.launch，完成模式设置，之后我们可以重新拔插雷达串口，观察雷达是否会自动转动，并运行雷达驱动roslaunch unitree_lidar_ros run_without_rviz.launch，观察是否会开始转动。当重新给雷达上电不转动，运行驱动才转动时，表明修改完成。
+7.5 USB相机
+7.5.1 USB相机介绍
+1. 硬件参数
+2. 连接方法
+USB相机插入机载电脑的USB接口即可完成连接
+在终端输入lsusb查看设备是否正常连接
+lsusb
+3. 作用
+通过USB摄像头图像，我们可以使用opencv或深度学习算法完成图像的处理和识别，也可以进行拍照，录像等功能。
+7.5.2 USB相机的使用
+在将USB相机通过USB连接到机载电脑后，我们就可以使用opencv和ros来读取发布图像了。
+在sensor_examples功能包scripts目录下创建代码文件usb_cam.py。
+1. 设备识别与初始化
+首先我们要正确找到设备的索引，并完成摄像头的初始化
+以下代码实现了相关库的导入，ros节点的初始化，创建摄像头实例，指定摄像头索引和使用的视频I/O后端，并进行了摄像头是否成功打开以及能否读取到图像的判断，通过以下步骤，即可完成USB摄像头的设备识别与初始化。
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+# 导入ros的python接口
+import rospy
+# 导入opencv
+import cv2
+# 导入ros的Image数据类型和将opencv数据转为rosmsgs的cv_bridge库
+from sensor_msgs.msg import Image
+from cv_bridge import CvBridge, CvBridgeError
+def main():
+# 初始化ros节点
+rospy.init_node('usb_cam_publish')
+# 实例化转换库
+bridge = CvBridge()
+# 创建摄像头实例，指定摄像头索引和使用的视频I/O后端
+cap = cv2.VideoCapture(0, cv2.CAP_V4L2)
+# 判断摄像头是否打开
+if not cap.isOpened():
+rospy.logerr("Failed to open camera")
+return
+# 判断能否读到图像
+ret, frame = cap.read()
+if not ret:
+rospy.logwarn("Failed to grab frame from camera")
+return
+rospy.loginfo(f"Camera opened successfully")
+其中摄像头的索引在设备中并不固定，因此我们需要通过指令去查询索引
+在终端输入ls /dev/video*指令查看USB摄像头设备
+ls /dev/video*
+我们可以看到有/dev/video0和/dev/video1两个索引，一般前面的才是正确的索引序号，因此，我们将代码cap = cv2.VideoCapture(0, cv2.CAP_V4L2)中的索引改为0，这样基本上就可以正确打开摄像头了。
+当我们需要使用多个摄像头时，可以通过插拔摄像头并观察ls /dev/video*指令的输出变化，即可判断每一个摄像头对应的索引。
+2. 查询与设置视频参数
+在我们正确打开摄像头后，我们就可以通过设置参数去配置摄像头的工作模式。
+首先，我们通过v4l2-ctl -d /dev/video0 --list-formats-ext指令，查看摄像头支持的图像格式，分辨率及帧率。不同的摄像头支持的格式，分辨率，帧率可能不同。其中的/dev/video0替换为自己的摄像头索引。
+v4l2-ctl -d /dev/video0 --list-formats-ext
+根据输出，我们可以知道该摄像头支持YUYV和MJPG两种图像格式，以及在不同图像格式下支持的分辨率以及帧率，可以发现，只有在MJPG格式下，1920×1080能达到30帧，YUYV格式下，超过640×480帧率就会下降。这是因为YUYV输出的是无损的原始图像，带宽占用高，MJPG输出的是有损的缩后的图像，带宽占用低。摄像头默认输出YUYV格式，640×480，30帧的图像，一般情况下，默认输出即可满足使用。
+接着，我们通过v4l2-ctl -d /dev/video0 --list-ctrls指令，查看摄像头支持的一些控制参数。不同的摄像头支持的控制参数可能不同。其中的/dev/video0替换为自己的摄像头索引。
+v4l2-ctl -d /dev/video0 --list-ctrls
+根据输出，我们可以知道，该摄像头支持亮度（brightness）、对比度（contrast）、饱和度（saturation）、色调（hue）、伽马校正（gamma）、增益（gain）、锐度（sharpness）、背光补偿（backlight_compensation）、自动/手动曝光控制（exposure_auto、exposure_absolute）、曝光优先级（exposure_auto_priority）、自动/手动白平衡（white_balance_temperature_auto、white_balance_temperature）以及电源抗闪烁频率（power_line_frequency）这些控制参数的修改。以及它的最大值，最小值，步长，默认值和当前值。大部分情况下，这些参数都不需要改动，保持默认即可。
+综上所述，当成功打开设备并完成初始化后，完全可以不进行任何的格式参数修改，就可以直接使用。如若需要修改格式参数，使用以下指令即可完成修改。
+（1）修改图像格式（必须第一个设置），分辨率和帧率
+将图像改为YUYV格式
+cap.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc('Y', 'U', 'Y', 'V'))
+将图像改为MJPG格式
+cap.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc('M', 'J', 'P', 'G'))
+修改分辨率
+cap.set(cv2.CAP_PROP_FRAME_WIDTH, 640)   # 宽
+cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)  # 高
+修改帧率
+cap.set(cv2.CAP_PROP_FPS, 30)
+打印当前图像格式，分辨率和帧率
+fourcc_code = int(cap.get(cv2.CAP_PROP_FOURCC))
+fourcc_str = "".join([chr((fourcc_code >> 8 * i) & 0xFF) for i in range(4)])
+width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+fps = cap.get(cv2.CAP_PROP_FPS)
+print(f"  像素格式 (FOURCC): '{fourcc_str}'")
+print(f"  分辨率           : {width} × {height}")
+print(f"  帧率 (FPS)       : {fps:.2f}")
+（2）修改控制参数
+修改亮度并打印当前亮度
+# 1. brightness（亮度）
+cap.set(cv2.CAP_PROP_BRIGHTNESS, 0)          # -64 ~ 64
+brightness = cap.get(cv2.CAP_PROP_BRIGHTNESS)
+print(f"  Brightness (亮度)           : {brightness}")
+修改对比度并打印当前对比度
+# 2. contrast（对比度）
+cap.set(cv2.CAP_PROP_CONTRAST, 32)           # 0 ~ 64
+contrast = cap.get(cv2.CAP_PROP_CONTRAST)
+print(f"  Contrast (对比度)           : {contrast}")
+修改饱和度并打印当前饱和度
+# 3. saturation（饱和度）
+cap.set(cv2.CAP_PROP_SATURATION, 64)         # 0 ~ 128
+saturation = cap.get(cv2.CAP_PROP_SATURATION)
+print(f"  Saturation (饱和度)         : {saturation}")
+修改色调并打印当前色调
+# 4. hue（色调）
+cap.set(cv2.CAP_PROP_HUE, 0)                 # -40 ~ 40
+hue = cap.get(cv2.CAP_PROP_HUE)
+print(f"  Hue (色调)                  : {hue}")
+修改伽马并打印当前伽马
+# 5. gamma（伽马）
+cap.set(cv2.CAP_PROP_GAMMA, 100)             # 72 ~ 500
+gamma = cap.get(cv2.CAP_PROP_GAMMA)
+print(f"  Gamma (伽马)                : {gamma}")
+修改增益并打印当前增益
+# 6. gain（增益）
+cap.set(cv2.CAP_PROP_GAIN, 0)                # 0 ~ 100
+gain = cap.get(cv2.CAP_PROP_GAIN)
+print(f"  Gain (增益)                 : {gain}")
+修改锐度并打印当前锐度
+# 7. sharpness（锐度）
+cap.set(cv2.CAP_PROP_SHARPNESS, 2)           # 0 ~ 6
+sharpness = cap.get(cv2.CAP_PROP_SHARPNESS)
+print(f"  Sharpness (锐度)            : {sharpness}")
+修改色温并打印当前色温
+手动修改色温时，必须先关闭自动白平衡
+# 8. white_balance_temperature_auto（自动白平衡）
+cap.set(cv2.CAP_PROP_AUTO_WB, 1)             # 0=关闭, 1=开启
+# 8. white_balance_temperature（手动色温）→ 必须在 auto_wb=0 后设置
+cap.set(cv2.CAP_PROP_WB_TEMPERATURE, 4600)   # 2800 ~ 6500 K
+auto_wb = cap.get(cv2.CAP_PROP_AUTO_WB)
+wb_temp = cap.get(cv2.CAP_PROP_WB_TEMPERATURE)
+print(f"  Auto White Balance          : {'ON' if auto_wb else 'OFF'}")
+print(f"  White Balance Temperature   : {wb_temp} K")
+修改曝光值并打印当前曝光值
+手动修改曝光值时，必须先关闭自动曝光模式
+# 9. exposure_auto（自动曝光模式）→ 设为 1 表示 Manual
+cap.set(cv2.CAP_PROP_AUTO_EXPOSURE, 3)     # 注意：1 = Manual, 3 = Auto
+# 9. exposure_absolute（手动曝光值）
+cap.set(cv2.CAP_PROP_EXPOSURE, 157)          # 1 ~ 5000
+auto_exposure = cap.get(cv2.CAP_PROP_AUTO_EXPOSURE)
+exposure_val = cap.get(cv2.CAP_PROP_EXPOSURE)
+exposure_mode = "Manual" if auto_exposure == 1 else "Auto"
+print(f"  Auto Exposure Mode          : {exposure_mode} (raw={auto_exposure})")
+print(f"  Exposure Value              : {exposure_val}")
+3. 图像获取与实时显示
+当我们成功打开摄像头完成初始化，并进行了相关参数的设置之后，我们就可以开始读取图像并查看实时图像。
+通过以下代码，我们先注册了一个ros的发布者image_pub，向'/usb_cam/image_raw'话题发布Image数据类型的消息，接着我们使用rospy.Rate来限制循环的帧率，固定帧率发布图像，同时避免CPU空转。
+接着我们创建一个循环，以每秒30帧的频率运行，在循环内，先通过cap.read()读取摄像头图像，接着通过ret来判断图像是否存在，若不存在则进入下一个循环，若存在，则使用bridge将从摄像头获取到的opencv图像转为ros的Image格式，再使用先前注册的发布者image_pub将转换后的图像数据ros_image发布出去，从何供其他订阅者使用以及使用rqt_image_view完成可视化。
+# 创建发布者
+image_pub = rospy.Publisher('/usb_cam/image_raw', Image, queue_size=1)
+# 使用Rate限制帧率
+rate = rospy.Rate(30)  # 30 FPS
+try:
+while not rospy.is_shutdown():
+# 读取一帧图像
+ret, frame = cap.read()
+# 判断能否读到图像
+if not ret:
+rospy.logwarn("Failed to grab frame from camera")
+continue
+try:
+# 将opencv图像转为ros的Image格式
+ros_image=bridge.cv2_to_imgmsg(frame, encoding="bgr8")
+# 将图像发布出去
+image_pub.publish(ros_image)
+except CvBridgeError as e:
+rospy.logerr(f"CvBridge Error: {e}")
+continue
+# 控制循环频率
+rate.sleep()
+except rospy.ROSInterruptException:
+rospy.loginfo("ROS interrupt received. Shutting down...")
+finally:
+cap.release()
+rospy.loginfo("Camera released.")
+至此，我们已经完成了USB摄像头的初始化，参数设置，读取图像，发布图像这几个步骤，接着我们来运行代码查看效果（完整代码参考资料包）
+首先在终端启动一个roscore
+roscore
+接着，新开一个终端，输入rosrun sensor_examples usb_cam.py启动编写的USB摄像头读取发布程序
+rosrun sensor_examples usb_cam.py
+最后，新开一个终端，输入rqt_image_view，选择代码内创建的发布话题'/usb_cam/image_raw'，查看发布的实时图像。
+rqt_image_view
+7.5.3 USB相机的内参标定
+除了简单的图像处理以外，当我们使用USB摄像头进行apriltag码识别等功能时，摄像头的畸变会极大的影响使用效果，因此，我们要对其进行畸变校正，标定内参和畸变系数。
+1. 准备标定板
+在进行摄像头的标定前，需要准备一块标定板，标定板可以网上购买，不过比较昂贵，也可以将资料包中的标定板文件用A4纸打印出来，固定在硬纸板上使用，不过受限于打印机的精度和粘贴时的平整度，会对标定结果产生影响，但用于一般的比赛来说基本够用。
+实际成品如图所示，其中每个小格子的边长为0.02m，即2cm。
+2. 调整相机和准备代码
+首先在进行标定，要调整好相机的焦距（拧镜头），使成像清晰。
+接着，安装用于标定的camera_calibration功能包，一般情况下，设备已提前安装好，此步可跳过。
+若未安装，则在命令行输入以下指令安装，其中的noetic替换为自己的ros版本。
+sudo apt install ros-noetic-camera-calibration
+安装完camera_calibration功能包后，我们参考上一章节《USB相机的使用》，来编写一个摄像头图像的发布节点，用于校正，当然也可以直接使用上一章的例程。
+3. 开始标定
+在完成了标定板、相机和代码的准备后，我们开始进行标定。
+首先在终端输入roscore启动rosmaster
+roscore
+接着，启动摄像头图像的发布节点，我们在这里启动上一章的例程
+rosrun sensor_examples usb_cam.py
+最后，启动标定节点，该标定节点有三个参数
+size：标定板的内角点数量
+如下图所示，每个红圈圈的地方就是一个内角点，示例图中，横向有11个内角点，纵向有8个内角点，所以参数填11x8。
+注意11x8中的‘x’为小写字母‘x’，而不是数学符号‘*’。使用时根据你所使用标定板实际尺寸修改。
+square：标定板中每个小格子的边长
+示例中的标定板的小格子边长为2cm，也就是0.02m，所以参数填0.02，使用时根据你所使用标定板实际尺寸修改。
+image：发布摄像头图像的ros话题
+例程中注册的话题名为/usb_cam/image_raw，所以我们填/usb_cam/image_raw。使用时根据你实际的话题名修改。
+修改完参数后，使用以下以下指令启动标定节点
+rosrun camera_calibration cameracalibrator.py --size 11x8 --square 0.02 image:=/usb_cam/image_raw
+启动后会出现这样的界面
+拿着标定板放在相机视野内，标定板上出现彩色线条则为有效图像，反之无效，需要调整标定板位置。
+依次在左右（X），上下（Y），远近（Size），倾斜（Skew）方向移动，直到标定界面上对应方位下方的进度条为绿色，移动过程尽量缓慢，避免大幅度的移动使相机成像产生拖影。为了得到一个好的标定结果，应该使得标定板尽量出现在摄像头视野的各个位置里，比如相机视野的左边，右边，上边和下边，标定板既有倾斜的，也有水平的，离得近的远的都要有，最好保证所有的进度条都是绿色满格的 。
+当所有进度条都变成绿色后，CALIBRATE按钮由灰色变成深绿色，点击CALIBRATE，点击后，界面会卡住，此时不要做任何操作，直到运行标定程序的终端输出标定的结果，如下图所示。
+标点完成后再将标定板放在相机视野内，右上角会出现标定结果的线性误差，通常这个值小于0.1或者显示acc都可以认为标定结果可用。
+点击标定界面的SAVE按钮，标定结果保存在/tmp/calibrationdata.tar.gz这个压缩包中，CTRL+C退出程序。
+我们使用cp指令将压缩包从tmp目录拿出来
+cp /tmp/calibrationdata.tar.gz ~/ros_test_ws/src/sensor_examples/config/
+使用tar指令解压缩文件，得到一堆标定时的图片和文件
+tar -xvf calibrationdata.tar.gz
+其中的ost.yaml文件就是我们标定的内参，其他的文件可以删掉。至此，内参标定结束。
+4. 发布内参数据
+在完成USB相机内参的标定后，我们就可以将内参通过ros话题发布出去，供有需要的节点来使用。
+在sensor_examples功能包scripts目录下创建代码文件usb_info.py。
+我们只需要简单的导入ros中承载内参的CameraInfo消息类型和yaml文件处理库，读取文件路径下的参数文件，将数据依次填入CameraInfo消息中，然后通过发布者发布出去即可。定义发布话题为'/usb_cam/camera_info'（完整代码参考资料包）。
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+# 导入ros的python接口
+import rospy
+# 导入ros的CameraInfo数据类型
+from sensor_msgs.msg import CameraInfo
+# 导入yaml文件相关处理库
+import yaml
+from yaml import CLoader as Loader
+def load_camera_info(yaml_file):
+"""
+从YAML文件加载相机标定信息
+:param yaml_file: YAML文件路径
+:return: sensor_msgs/CameraInfo对象
+"""
+with open(yaml_file, 'r') as file:
+calib_data = yaml.load(file, Loader=Loader)
+camera_info_msg = CameraInfo()
+camera_info_msg.width = calib_data['image_width']
+camera_info_msg.height = calib_data['image_height']
+camera_info_msg.K = calib_data['camera_matrix']['data']
+camera_info_msg.D = calib_data['distortion_coefficients']['data']
+camera_info_msg.R = calib_data['rectification_matrix']['data']
+camera_info_msg.P = calib_data['projection_matrix']['data']
+camera_info_msg.distortion_model = calib_data['distortion_model']
+return camera_info_msg
+记得将参数文件路径改为自己的参数文件路径
+yaml_file = '/home/orangepi/ros_test_ws/src/sensor_examples/config/ost.yaml'
+完成代码的编写后，我们来看一下效果
+首先在终端启动一个roscore
+roscore
+接着，新开一个终端，输入rosrun sensor_examples usb_info.py启动编写的USB摄像内参发布程序
+rosrun sensor_examples usb_info.py
+新开一个终端，输入rostopic echo /usb_cam/camera_info查看发布的消息
+rostopic echo /usb_cam/camera_info
+至此，USB摄像内参的发布也完成了。
+7.5.4 USB相机补充说明
+无
+八、主体例程（应用核心）
+8.1 快速试飞
+（1）上电启动
+无人机采用激光雷达进行建图定位，定位算法启动后，无人机初始化所在的位置为原点，机头方向为x轴正方向，机身左侧方向为y轴正方向，地面向上为z轴正方向。
+无人机航点的配置文件默认为一个逆时针的正方形，从起始点（0，0）开始（正方形右下角），飞遍（1.2，0），（1.2，1.2），（0，1.2），（0，0），四个点，因此，飞行前请保证摆放的位置有足够的空间。
+（2）命令行输入 bash self_start.sh
+在上电正常启动后，通过查阅三、连接方式连接到无人机的机载电脑，然后在终端输入bash self_start.sh，启动程序。
+（3）启动定位和主程序
+正常执行后，无人机会开始启动相关的程序，其中，定位方面会因为定位精度判断的原因而重复启动，请耐心等待，当完成定位，将启动主程序后，无人机上的蜂鸣器会短促的响三声，并打印wait RC，此时就可以进行一键起飞的操作。
+（3）起飞
+起飞前，最后确认无人机的定位是否准确，再打开一个命令行界面（注意是新开一个，不要关闭之前启动的程序），输入
+rostopic echo /mavros/local_position/odom 就可以查看定位数据，单位为米(m)。
+如果数据没有问题就可以进行起飞。
+我们打开遥控器，油门拨到中位，CH5处于中位，CH7处于L位，最后将CH8从L拨到H，三秒以后无人机就会启动，然后一键起飞。
+在无人机飞行过程中，如有突发情况，可先尝试将CH5拨到L位切换成手动定点模式，如难以反应，可直接将CH7从L拨到H，完成锁桨（危险操作，会导致炸机，为最后保险）。
+8.2 相关文件介绍
+1./home/orangepi/1.学习例程/
+一些python和图像处理的相关例程，可在同一局域网下，通过无人机ip端口进行访问无人机文件以及运行python和图像处理的相关例程。
+2./home/orangepi/ctrl_ws/
+不涉及硬件驱动，算法的比赛代码
+/home/orangepi/ctrl_ws/src/competition_pkg//目录下
+（1）/scripts/competition_main.py
+主程序，二次开发时，基本上只需对主程序进行修改
+（2）/scripts/uav_img_tools.py
+一些简单的图像处理库
+（3）/scripts/uav_ctrl_tools.py
+无人的控制库，包括起飞，降落等
+（4）/scripts/node_manage.py
+节点管理，负责启动定位算法和主程序，当定位质量差时，进行重启，一般不用动
+（5）/launch/demo.launch
+主程序的launch启动文件，负责启动主程序并加载航点参数。
+3./home/orangepi/tools_ws/
+硬件驱动，定位算法等资源
+（5）cam_pkg
+读取摄像头发布图像话题
+（5）camera_pose_node
+定位转发，将slam定位发送给飞控进行数据融合
+（5）manage_bridge_node
+地面站服务端，使用地面站时需要开启
+（5）point_lio_unitree
+激光slam的定位算法
+（5）test_pkg
+ros的一些简单例程
+（5）unilidar_sdk2-2.0.10
+雷达的硬件驱动
+4./home/orangepi/self_start.sh
+self_start.sh是一个shell脚本，他将比赛所有需要启动的代码一起运行，从而完成一个脚本就能启动比赛所需功能的作用。
+4./home/orangepi/manage_sys.sh
+启动地面站所需的所有程序
+8.3 控制功能库介绍
+在uav_ctrl_tools.py这个文件里定义了一个工具类CtrlTools，在使用时，只需将文件import，实例化类，并调用方法传入参数即可
+get_rc_data()
+获取当前遥控器通道值
+无参数
+返回值为通道值，类型为列表[roll,pitch,thr,yaw,ch5,ch6,ch7,ch8]，前四个为飞机姿态控制的相关通道，后面为其他的通道
+set_rc_to_start()
+借用遥控器完成一键起飞 。用于阻塞程序执行，直到收到遥控器正确的起飞指令才通过阻塞(油门中位、ch5不是H位、ch8从L位->H位)
+无参数
+返回值为True或False，收到遥控器正确的起飞指令时返回True，关闭程序返回False
+uav_takeoff()
+起飞功能函数，阻塞函数，直到正常起飞
+无参数
+返回值为True或False
+uav_land()
+执行降落功能
+无参数
+返回值为True或False
+set_point(p_x,p_y,p_z)
+设置飞行目标点
+参数为目标点的x,y,z坐标
+无返回值
+get_point()
+获取计划的目标点
+无参数
+返回值为False, 0.0,0.0,0.0, 0或True， cur_point.x，cur_point.y，cur_point.z，cur_point.flag，当已经没有目标点时，返回值第一位为False，表示没有点，之后三位表示原点坐标0，0，0，最后一位为任务点0标志位。当还有目标点时，返回值第一位为True，表示还有点，之后三位表示目标点坐标x，y，z，最后一位为任务点标志位
+add_point(x, y, z, flag)
+向队列最后一位添加计划的的目标点
+参数为目标点的x, y, z坐标和该目标点的任务标志位flag
+无返回值
+get_local()
+获取当前位置信息
+无参数
+返回值为当前位置x，y，z坐标
+get_state(x,y,z)
+判断当前是否到达目标点（参数xyz点）
+参数为目标点x，y，z坐标
+返回值为True或False，到达返回True，未到达返回False
+ctrl_servo(servo_id, is_open)
+控制pwm控制舵机
+第一个参数为输出通道，填1，2，3
+第二个参数为舵机开关，填True或False
+无返回值
+ctrl_buzzer(audio_id, audio_str = "")
+控制蜂鸣器
+第一个参数为声音的编号，其中填1，2，3时，调用预设的三种发声，填4时，自定义发声
+第二个参数为声音的字符串，采用RTTTL 铃声格式规则，默认为空，当audio_id为非1，2，3的数时，就会使用audio_str参数
+无返回值
+get_img()
+获取摄像头模块发布的的图像帧
+无参数
+返回值为图像帧
+set_yaw(target_yaw)
+控制无人机转向
+参数为目标角度，单位为弧度rad
+8.4 开发流程介绍
+1.主程序的逻辑流程
+我们在/home/orangepi/ctrl_ws/src/competition_pkg/scripts/路径下找到competition_main.py文件
+此文件为综合使用的一个基础模板，比赛任务可在此文件内编写
+#initialize
+初始化ros节点
+实例化工具类
+#Task Init
+定义任务1
+定义任务2
+......
+#main
+set_rc_to_start()阻塞函数，等待遥控器命令
+接收到命令后，蜂鸣器响三声
+执行起飞函数uav_takeoff()，阻塞函数，等待起飞完成
+while循环
+get_point()获取目标点have_point, x,y,z,task_flag，即是否有点，点的坐标，到达此点需要执行哪个任务
+如果没有目标点（have_point=False）：
+跳出大循环，准备降落
+如果有目标点（have_point=True）：
+设置目标点x， y， z
+while循环
+get_state(x,y,z)判断是否到达目标点x， y， z
+如果没有到达：
+跳过此循环，进行下一次循环
+判断任务标志位task_flag，判断此点是否有任务执行
+有任务1(task_flag=1)：
+在此执行任务1
+有任务2(task_flag=2)：
+在此执行任务2
+任务结束，跳出小循环
+降落
+2.launch文件的航点加载
+除了对主程序进行修改外，我们还需要对
+/home/orangepi/ctrl_ws/src/competition_pkg/launch/路径下的
+demo.launch文件进行修改
+如图所示，在这里添加要到达的航点，point_x为参数名，后面为参数值，其中，参数值的前三位为目标航点的xyz坐标，最后一位为该行点的任务标志位。
+这些航点就是主程序中被get_point（）获取到的航点，通过修改航点参数和主程序，我们就可以做到，无人机飞到某个点，执行任务，然后飞到下一个点，执行任务，直到航点运行完，进行降落。

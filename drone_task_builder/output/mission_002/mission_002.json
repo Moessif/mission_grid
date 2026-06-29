@@ -1,0 +1,61 @@
+{
+  "mission_name": "mission_002",
+  "tasks": [
+    {
+      "task_id": "env_start",
+      "name": "环境启动",
+      "params": {
+        "use_fast_lio": false,
+        "use_camera": true,
+        "use_mavros": true
+      }
+    },
+    {
+      "task_id": "wait_mapping",
+      "name": "等待定位稳定",
+      "params": {
+        "check_count": 5,
+        "position_error": 0.1,
+        "yaw_error": 2.0
+      }
+    },
+    {
+      "task_id": "wildlife_grid_patrol",
+      "name": "野生动物网格巡航",
+      "params": {
+        "origin_x": 0.0,
+        "origin_y": 0.0,
+        "grid_cols": 9,
+        "grid_rows": 7,
+        "cell_size": 0.6,
+        "patrol_altitude": 1.2,
+        "forbidden_cells_json": "[\"B2\",\"C5\"]",
+        "hover_seconds": 1.2,
+        "arrive_precision": 0.2,
+        "result_dir": "/home/orangepi/Desktop/wildlife_results"
+      }
+    },
+    {
+      "task_id": "wildlife_detect_animals",
+      "name": "野生动物识别统计",
+      "params": {
+        "model_path": "/home/orangepi/ctrl_ws/src/competition_pkg/scripts/animal82.onnx",
+        "confidence": 0.6
+      }
+    },
+    {
+      "task_id": "return_home",
+      "name": "返航",
+      "params": {
+        "return_home": true
+      }
+    },
+    {
+      "task_id": "land",
+      "name": "直接降落",
+      "params": {
+        "auto_land": true
+      }
+    }
+  ]
+}

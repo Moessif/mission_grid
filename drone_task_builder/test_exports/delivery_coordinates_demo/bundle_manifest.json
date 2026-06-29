@@ -1,0 +1,76 @@
+{
+  "mission_name": "delivery_coordinates_demo",
+  "bundle_type": "delivery_mission",
+  "generated_at": "2026-06-14 15:06:10",
+  "entry_script": "test_exports\\delivery_coordinates_demo\\run_delivery_mission.sh",
+  "tasks": [
+    {
+      "task_id": "env_start",
+      "name": "环境启动",
+      "params": {
+        "use_fast_lio": false,
+        "use_camera": true,
+        "use_mavros": true
+      }
+    },
+    {
+      "task_id": "wait_mapping",
+      "name": "等待定位稳定",
+      "params": {
+        "check_count": 5,
+        "position_error": 0.1,
+        "yaw_error": 2.0
+      }
+    },
+    {
+      "task_id": "delivery_coordinates",
+      "name": "按坐标送货",
+      "params": {
+        "targets_json": "[{\"name\":\"target_1\",\"x\":2.0,\"y\":2.75},{\"name\":\"target_2\",\"x\":3.2,\"y\":1.4}]",
+        "cruise_altitude": 1.5,
+        "drop_altitude": 0.8,
+        "hover_seconds": 5.0,
+        "servo_id": 1,
+        "servo_open_seconds": 1.0,
+        "arrive_precision": 0.2,
+        "result_dir": "/home/orangepi/Desktop/delivery_results"
+      }
+    },
+    {
+      "task_id": "delivery_release_cargo",
+      "name": "送货释放货物",
+      "params": {
+        "laser_during_delivery": false
+      }
+    },
+    {
+      "task_id": "return_home",
+      "name": "返航",
+      "params": {
+        "return_home": true
+      }
+    },
+    {
+      "task_id": "land",
+      "name": "直接降落",
+      "params": {
+        "auto_land": true
+      }
+    }
+  ],
+  "reference_sources": {
+    "position_monitor_dir": "C:\\Users\\王震\\Desktop\\无人机已成功脚本\\返回无人机当前坐标\\2",
+    "qr_patrol_dir": "C:\\Users\\王震\\Desktop\\无人机已成功脚本\\巡航加二维码扫描",
+    "competition_script_dir": "C:\\Users\\王震\\Desktop\\无人机计算机\\ctrl_ws\\src\\competition_pkg\\scripts"
+  },
+  "generated_files": [
+    "test_exports\\delivery_coordinates_demo\\delivery_coordinates_demo.json",
+    "test_exports\\delivery_coordinates_demo\\uav_ctrl_tools.py",
+    "test_exports\\delivery_coordinates_demo\\generated_runtime_config.json",
+    "test_exports\\delivery_coordinates_demo\\generated_mission.py",
+    "test_exports\\delivery_coordinates_demo\\run_delivery_mission.sh"
+  ],
+  "warnings": [
+    "导出包会自动生成启动脚本，“环境启动”任务主要用于方案表达。"
+  ]
+}
