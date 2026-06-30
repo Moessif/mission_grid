@@ -2,13 +2,11 @@
 3D 点云可视化模块
 ================
 
-从机载 rosbridge_server 获取点云数据并在 Qt 界面中显示。
+双模式相机：
+- 轨道模式：左键旋转、右键平移、滚轮缩放
+- 第一人称模式：WASD 移动、鼠标转向、Space/Shift 升降
 
-操控方式（类似 Minecraft）：
-- 鼠标左键拖动：旋转视角
-- 鼠标右键拖动：平移
-- 滚轮：缩放
-- 重置视图按钮：回到初始视角
+按 Tab 切换模式。
 """
 
 from __future__ import annotations
@@ -19,14 +17,14 @@ import struct
 import time
 import threading
 import numpy as np
-from PySide6.QtCore import QThread, Signal, Qt
+from PySide6.QtCore import QThread, Signal, Qt, QTimer
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel,
     QLineEdit, QPushButton, QGroupBox, QCheckBox, QSpinBox, QTextEdit,
     QComboBox
 )
 from PySide6.QtOpenGLWidgets import QOpenGLWidget
-from PySide6.QtGui import QCursor
+from PySide6.QtGui import QCursor, QVector3D
 from OpenGL.GL import *
 from OpenGL.GLU import *
 
@@ -49,24 +47,19 @@ class PointCloudThread(QThread):
 
     def run(self):
         import websocket
-
         self.running = True
         self._log(f"正在连接 {self.url} ...")
-
         try:
             self.ws = websocket.WebSocket()
             self.ws.settimeout(1.0)
             self.ws.connect(self.url)
             self.connection_changed.emit(True)
             self._log("WebSocket 连接成功")
-
             subscribe_msg = {"op": "subscribe", "topic": self.topic}
             self.ws.send(json.dumps(subscribe_msg))
             self._log(f"已订阅话题: {self.topic}")
-
             sender = threading.Thread(target=self._sender_loop, daemon=True)
             sender.start()
-
             while self.running:
                 try:
                     data = self.ws.recv()
@@ -78,17 +71,14 @@ class PointCloudThread(QThread):
                     if self.running:
                         self.error_occurred.emit(f"接收错误: {e}")
                     break
-
         except Exception as e:
             self.error_occurred.emit(f"连接失败: {e}")
             self._log(f"连接失败: {e}")
             self.connection_changed.emit(False)
         finally:
             if self.ws:
-                try:
-                    self.ws.close()
-                except:
-                    pass
+                try: self.ws.close()
+                except: pass
             self.connection_changed.emit(False)
 
     def _sender_loop(self):
@@ -107,26 +97,21 @@ class PointCloudThread(QThread):
         try:
             msg = json.loads(data)
             if msg.get("op") == "publish" and msg.get("topic") == self.topic:
-                payload = msg.get("msg", {})
-                points = self._parse_any_pointcloud(payload)
+                points = self._parse_any_pointcloud(msg.get("msg", {}))
                 if points is not None and len(points) > 0:
                     with self._lock:
                         self._latest_points = points
-        except:
-            pass
+        except: pass
 
     def _parse_any_pointcloud(self, msg: dict) -> np.ndarray:
-        if "point_step" in msg:
-            return self._parse_pointcloud2(msg)
-        elif "points" in msg:
-            return self._parse_livox_custom(msg)
+        if "point_step" in msg: return self._parse_pointcloud2(msg)
+        elif "points" in msg: return self._parse_livox_custom(msg)
         return None
 
     def _parse_livox_custom(self, msg: dict) -> np.ndarray:
         try:
             points_data = msg.get("points", [])
-            if not points_data:
-                return None
+            if not points_data: return None
             num = len(points_data)
             points = np.zeros((num, 3), dtype=np.float32)
             for i, p in enumerate(points_data):
@@ -135,22 +120,18 @@ class PointCloudThread(QThread):
                 points[i, 2] = p.get("z", 0.0)
             valid = np.isfinite(points).all(axis=1) & (np.abs(points) < 1000).all(axis=1)
             return points[valid] if valid.any() else None
-        except:
-            return None
+        except: return None
 
     def _parse_pointcloud2(self, msg: dict) -> np.ndarray:
         try:
             fields = msg.get("fields", [])
             point_step = msg.get("point_step", 0)
             data = msg.get("data", "")
-            if not data:
-                return None
+            if not data: return None
             raw_data = base64.b64decode(data)
-            if not point_step:
-                point_step = 12
+            if not point_step: point_step = 12
             num_points = len(raw_data) // point_step
-            if num_points == 0:
-                return None
+            if num_points == 0: return None
             x_off, y_off, z_off = 0, 4, 8
             for f in fields:
                 name = f.get("name", "")
@@ -164,16 +145,13 @@ class PointCloudThread(QThread):
             points = np.column_stack([x, y, z])
             valid = np.isfinite(points).all(axis=1) & (np.abs(points) < 1000).all(axis=1)
             return points[valid] if valid.any() else None
-        except:
-            return None
+        except: return None
 
     def stop(self):
         self.running = False
         if self.ws:
-            try:
-                self.ws.close()
-            except:
-                pass
+            try: self.ws.close()
+            except: pass
         self.wait()
 
     def is_connected(self) -> bool:
@@ -182,12 +160,11 @@ class PointCloudThread(QThread):
 
 class PointCloudGLWidget(QOpenGLWidget):
     """
-    OpenGL 点云渲染组件。
+    双模式 3D 点云渲染。
 
-    操控：
-    - 左键拖动：旋转视角
-    - 右键拖动：平移
-    - 滚轮：缩放
+    轨道模式：左键旋转、右键平移、滚轮缩放
+    第一人称：WASD 移动、鼠标转向、Space/Shift 升降
+    Tab 切换模式。
     """
 
     def __init__(self, parent=None):
@@ -195,13 +172,18 @@ class PointCloudGLWidget(QOpenGLWidget):
         self.points = None
         self.colors = None
 
-        # 相机参数
-        self.cam_yaw = -45.0    # 水平角
-        self.cam_pitch = 30.0   # 俯仰角
-        self.cam_dist = 10.0    # 距离
-        self.cam_target = [0.0, 0.0, 0.0]  # 观察目标
+        # 轨道模式参数
+        self.orbit_yaw = -45.0
+        self.orbit_pitch = 30.0
+        self.orbit_dist = 10.0
+        self.orbit_target = [0.0, 0.0, 0.0]
 
-        self.last_mouse_pos = None
+        # 第一人称参数
+        self.fp_pos = [5.0, 5.0, 3.0]  # 位置
+        self.fp_yaw = -135.0            # 水平角
+        self.fp_pitch = 0.0             # 俯仰角
+        self.fp_speed = 5.0             # 移动速度
+
         self.show_axis = True
         self.point_size = 2.0
         self.max_points = 50000
@@ -216,7 +198,17 @@ class PointCloudGLWidget(QOpenGLWidget):
         self._grid_list = 0
         self._axis_list = 0
 
-        # 启用鼠标追踪和焦点
+        # 模式
+        self.fps_mode = False
+        self.last_mouse_pos = None
+        self._keys_pressed = set()
+
+        # 移动定时器
+        self._move_timer = QTimer()
+        self._move_timer.setInterval(16)  # ~60fps
+        self._move_timer.timeout.connect(self._update_movement)
+        self._move_timer.start()
+
         self.setMouseTracking(True)
         self.setFocusPolicy(Qt.StrongFocus)
 
@@ -244,6 +236,66 @@ class PointCloudGLWidget(QOpenGLWidget):
         colors[:, 2] = np.clip((1 - z_norm) * 2, 0, 1)
         self.colors = colors
 
+    def toggle_fps_mode(self):
+        """切换轨道/第一人称模式。"""
+        self.fps_mode = not self.fps_mode
+        if self.fps_mode:
+            # 从轨道模式同步位置
+            yaw_rad = np.radians(self.orbit_yaw)
+            pitch_rad = np.radians(self.orbit_pitch)
+            self.fp_pos = [
+                self.orbit_target[0] + self.orbit_dist * np.cos(pitch_rad) * np.cos(yaw_rad),
+                self.orbit_target[1] + self.orbit_dist * np.cos(pitch_rad) * np.sin(yaw_rad),
+                self.orbit_target[2] + self.orbit_dist * np.sin(pitch_rad)
+            ]
+            self.fp_yaw = self.orbit_yaw + 180
+            self.fp_pitch = -self.orbit_pitch
+            self.setCursor(Qt.BlankCursor)
+            self.grabMouse()
+        else:
+            self.setCursor(Qt.ArrowCursor)
+            self.releaseMouse()
+        self.update()
+
+    def _update_movement(self):
+        """定时器驱动的移动更新（第一人称模式）。"""
+        if not self.fps_mode or not self._keys_pressed:
+            return
+
+        dt = 0.016  # ~60fps
+        speed = self.fp_speed * dt
+
+        yaw_rad = np.radians(self.fp_yaw)
+        forward = [np.cos(yaw_rad), np.sin(yaw_rad), 0]
+        right = [-np.sin(yaw_rad), np.cos(yaw_rad), 0]
+
+        moved = False
+        if Qt.Key_W in self._keys_pressed:
+            self.fp_pos[0] += forward[0] * speed
+            self.fp_pos[1] += forward[1] * speed
+            moved = True
+        if Qt.Key_S in self._keys_pressed:
+            self.fp_pos[0] -= forward[0] * speed
+            self.fp_pos[1] -= forward[1] * speed
+            moved = True
+        if Qt.Key_A in self._keys_pressed:
+            self.fp_pos[0] -= right[0] * speed
+            self.fp_pos[1] -= right[1] * speed
+            moved = True
+        if Qt.Key_D in self._keys_pressed:
+            self.fp_pos[0] += right[0] * speed
+            self.fp_pos[1] += right[1] * speed
+            moved = True
+        if Qt.Key_Space in self._keys_pressed:
+            self.fp_pos[2] += speed
+            moved = True
+        if Qt.Key_Shift in self._keys_pressed:
+            self.fp_pos[2] -= speed
+            moved = True
+
+        if moved:
+            self.update()
+
     def initializeGL(self):
         glClearColor(0.05, 0.05, 0.08, 1.0)
         glEnable(GL_DEPTH_TEST)
@@ -252,8 +304,8 @@ class PointCloudGLWidget(QOpenGLWidget):
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
         glEnable(GL_FOG)
         glFogi(GL_FOG_MODE, GL_LINEAR)
-        glFogf(GL_FOG_START, 20.0)
-        glFogf(GL_FOG_END, 80.0)
+        glFogf(GL_FOG_START, 30.0)
+        glFogf(GL_FOG_END, 100.0)
         glFogfv(GL_FOG_COLOR, [0.05, 0.05, 0.08, 1.0])
 
         self._vbo_pos = glGenBuffers(1)
@@ -261,10 +313,9 @@ class PointCloudGLWidget(QOpenGLWidget):
         self._build_display_lists()
 
     def _build_display_lists(self):
-        # 网格
         self._grid_list = glGenLists(1)
         glNewList(self._grid_list, GL_COMPILE)
-        glColor4f(0.2, 0.2, 0.25, 0.6)
+        glColor4f(0.15, 0.15, 0.2, 0.8)
         glLineWidth(1.0)
         glBegin(GL_LINES)
         for i in range(-20, 21):
@@ -273,7 +324,6 @@ class PointCloudGLWidget(QOpenGLWidget):
         glEnd()
         glEndList()
 
-        # 坐标轴
         self._axis_list = glGenLists(1)
         glNewList(self._axis_list, GL_COMPILE)
         glLineWidth(3.0)
@@ -287,34 +337,40 @@ class PointCloudGLWidget(QOpenGLWidget):
 
     def resizeGL(self, w, h):
         glViewport(0, 0, w, h)
-        self._update_projection(w, h)
+        self._update_projection()
 
-    def _update_projection(self, w=None, h=None):
-        if w is None:
-            w = self.width()
-        if h is None:
-            h = self.height()
+    def _update_projection(self):
+        w, h = self.width(), self.height()
         glMatrixMode(GL_PROJECTION)
         glLoadIdentity()
-        gluPerspective(60, w / max(h, 1), 0.1, 200.0)
+        fov = 70 if self.fps_mode else 60
+        gluPerspective(fov, w / max(h, 1), 0.05, 200.0)
         glMatrixMode(GL_MODELVIEW)
 
     def paintGL(self):
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
         glLoadIdentity()
 
-        # 计算相机位置（球坐标）
-        yaw_rad = np.radians(self.cam_yaw)
-        pitch_rad = np.radians(self.cam_pitch)
-        cx = self.cam_target[0] + self.cam_dist * np.cos(pitch_rad) * np.cos(yaw_rad)
-        cy = self.cam_target[1] + self.cam_dist * np.cos(pitch_rad) * np.sin(yaw_rad)
-        cz = self.cam_target[2] + self.cam_dist * np.sin(pitch_rad)
+        if self.fps_mode:
+            # 第一人称相机
+            yaw_rad = np.radians(self.fp_yaw)
+            pitch_rad = np.radians(self.fp_pitch)
+            look_x = self.fp_pos[0] + np.cos(pitch_rad) * np.cos(yaw_rad)
+            look_y = self.fp_pos[1] + np.cos(pitch_rad) * np.sin(yaw_rad)
+            look_z = self.fp_pos[2] + np.sin(pitch_rad)
+            gluLookAt(self.fp_pos[0], self.fp_pos[1], self.fp_pos[2],
+                      look_x, look_y, look_z, 0, 0, 1)
+        else:
+            # 轨道相机
+            yaw_rad = np.radians(self.orbit_yaw)
+            pitch_rad = np.radians(self.orbit_pitch)
+            cx = self.orbit_target[0] + self.orbit_dist * np.cos(pitch_rad) * np.cos(yaw_rad)
+            cy = self.orbit_target[1] + self.orbit_dist * np.cos(pitch_rad) * np.sin(yaw_rad)
+            cz = self.orbit_target[2] + self.orbit_dist * np.sin(pitch_rad)
+            gluLookAt(cx, cy, cz,
+                      self.orbit_target[0], self.orbit_target[1], self.orbit_target[2],
+                      0, 0, 1)
 
-        gluLookAt(cx, cy, cz,
-                  self.cam_target[0], self.cam_target[1], self.cam_target[2],
-                  0, 0, 1)
-
-        # 绘制场景
         if self.show_axis:
             glCallList(self._axis_list)
         glCallList(self._grid_list)
@@ -350,58 +406,78 @@ class PointCloudGLWidget(QOpenGLWidget):
         glDisableClientState(GL_VERTEX_ARRAY)
         glBindBuffer(GL_ARRAY_BUFFER, 0)
 
+    def keyPressEvent(self, event):
+        if event.isAutoRepeat():
+            return
+        if event.key() == Qt.Key_Tab:
+            self.toggle_fps_mode()
+            return
+        self._keys_pressed.add(event.key())
+
+    def keyReleaseEvent(self, event):
+        if event.isAutoRepeat():
+            return
+        self._keys_pressed.discard(event.key())
+
     def mousePressEvent(self, event):
-        self.last_mouse_pos = event.position()
+        if not self.fps_mode:
+            self.last_mouse_pos = event.position()
 
     def mouseMoveEvent(self, event):
-        if self.last_mouse_pos is None:
-            return
-        dx = event.position().x() - self.last_mouse_pos.x()
-        dy = event.position().y() - self.last_mouse_pos.y()
-
-        if event.buttons() & Qt.LeftButton:
-            # 左键：旋转视角
-            self.cam_yaw -= dx * 0.3
-            self.cam_pitch += dy * 0.3
-            self.cam_pitch = max(-89, min(89, self.cam_pitch))
-        elif event.buttons() & Qt.RightButton:
-            # 右键：平移（在相机平面上移动）
-            yaw_rad = np.radians(self.cam_yaw)
-            right_x = -np.sin(yaw_rad)
-            right_y = np.cos(yaw_rad)
-            up_z = 1.0
-            scale = self.cam_dist * 0.002
-            self.cam_target[0] += (right_x * dx + np.cos(yaw_rad) * dy) * scale
-            self.cam_target[1] += (right_y * dx + np.sin(yaw_rad) * dy) * scale
-            self.cam_target[2] += dy * scale * 0.5
-
-        self.last_mouse_pos = event.position()
-        self.update()
+        if self.fps_mode:
+            # 第一人称：鼠标控制视角
+            center = self.rect().center()
+            dx = event.position().x() - center.x()
+            dy = event.position().y() - center.y()
+            if abs(dx) > 2 or abs(dy) > 2:
+                self.fp_yaw += dx * 0.15
+                self.fp_pitch -= dy * 0.15
+                self.fp_pitch = max(-89, min(89, self.fp_pitch))
+                QCursor.setPos(self.mapToGlobal(center))
+            self.update()
+        else:
+            # 轨道模式
+            if self.last_mouse_pos is None:
+                return
+            dx = event.position().x() - self.last_mouse_pos.x()
+            dy = event.position().y() - self.last_mouse_pos.y()
+            if event.buttons() & Qt.LeftButton:
+                self.orbit_yaw -= dx * 0.3
+                self.orbit_pitch += dy * 0.3
+                self.orbit_pitch = max(-89, min(89, self.orbit_pitch))
+            elif event.buttons() & Qt.RightButton:
+                yaw_rad = np.radians(self.orbit_yaw)
+                scale = self.orbit_dist * 0.002
+                self.orbit_target[0] += (-np.sin(yaw_rad) * dx + np.cos(yaw_rad) * dy) * scale
+                self.orbit_target[1] += (np.cos(yaw_rad) * dx + np.sin(yaw_rad) * dy) * scale
+                self.orbit_target[2] += dy * scale * 0.5
+            self.last_mouse_pos = event.position()
+            self.update()
 
     def wheelEvent(self, event):
-        delta = event.angleDelta().y()
-        self.cam_dist *= 0.9 if delta > 0 else 1.1
-        self.cam_dist = max(0.5, min(100, self.cam_dist))
-        self.update()
+        if not self.fps_mode:
+            delta = event.angleDelta().y()
+            self.orbit_dist *= 0.9 if delta > 0 else 1.1
+            self.orbit_dist = max(0.5, min(100, self.orbit_dist))
+            self.update()
 
     def reset_view(self):
-        self.cam_yaw = -45.0
-        self.cam_pitch = 30.0
-        self.cam_dist = 10.0
-        self.cam_target = [0.0, 0.0, 0.0]
+        self.orbit_yaw = -45.0
+        self.orbit_pitch = 30.0
+        self.orbit_dist = 10.0
+        self.orbit_target = [0.0, 0.0, 0.0]
+        self.fp_pos = [5.0, 5.0, 3.0]
+        self.fp_yaw = -135.0
+        self.fp_pitch = 0.0
+        if self.fps_mode:
+            self.toggle_fps_mode()
         self.update()
 
     def cleanup(self):
-        if self._vbo_pos:
-            glDeleteBuffers(1, [self._vbo_pos])
-            self._vbo_pos = None
-        if self._vbo_col:
-            glDeleteBuffers(1, [self._vbo_col])
-            self._vbo_col = None
-        if self._grid_list:
-            glDeleteLists(self._grid_list, 1)
-        if self._axis_list:
-            glDeleteLists(self._axis_list, 1)
+        if self._vbo_pos: glDeleteBuffers(1, [self._vbo_pos])
+        if self._vbo_col: glDeleteBuffers(1, [self._vbo_col])
+        if self._grid_list: glDeleteLists(self._grid_list, 1)
+        if self._axis_list: glDeleteLists(self._axis_list, 1)
 
 
 class PointCloudWidget(QWidget):
@@ -419,7 +495,6 @@ class PointCloudWidget(QWidget):
         layout.setContentsMargins(8, 8, 8, 8)
         layout.setSpacing(8)
 
-        # 连接设置
         conn_group = QGroupBox("连接设置")
         conn_layout = QHBoxLayout(conn_group)
         conn_layout.addWidget(QLabel("rosbridge:"))
@@ -437,12 +512,14 @@ class PointCloudWidget(QWidget):
         conn_layout.addWidget(self.connect_btn)
         layout.addWidget(conn_group)
 
-        # 状态栏
         ctrl = QHBoxLayout()
         self.status_label = QLabel("● 未连接")
         self.status_label.setStyleSheet("color: gray; font-weight: bold;")
         ctrl.addWidget(self.status_label)
         ctrl.addStretch()
+        self.mode_label = QLabel("[轨道模式]")
+        self.mode_label.setStyleSheet("color: #7c4dff; font-weight: bold;")
+        ctrl.addWidget(self.mode_label)
         self.fps_label = QLabel("FPS: 0")
         ctrl.addWidget(self.fps_label)
         self.point_count_label = QLabel("点数: 0")
@@ -463,12 +540,10 @@ class PointCloudWidget(QWidget):
         ctrl.addWidget(reset_btn)
         layout.addLayout(ctrl)
 
-        # OpenGL
         self.gl_widget = PointCloudGLWidget()
         self.gl_widget.setMinimumSize(400, 300)
         layout.addWidget(self.gl_widget, 1)
 
-        # 调试日志
         self.debug_toggle = QPushButton("▼ 调试日志")
         self.debug_toggle.setCheckable(True)
         self.debug_toggle.toggled.connect(lambda v: (self.debug_text.setVisible(v), self.debug_toggle.setText("▲ 调试日志" if v else "▼ 调试日志")))
@@ -481,10 +556,27 @@ class PointCloudWidget(QWidget):
         self.debug_text.hide()
         layout.addWidget(self.debug_text)
 
-        hint = QLabel("左键拖动: 旋转 | 右键拖动: 平移 | 滚轮: 缩放")
-        hint.setStyleSheet("color: gray; font-size: 11px;")
-        hint.setAlignment(Qt.AlignCenter)
-        layout.addWidget(hint)
+        self.hint_label = QLabel("轨道: 左键旋转 | 右键平移 | 滚轮缩放  |  Tab 切换第一人称")
+        self.hint_label.setStyleSheet("color: gray; font-size: 11px;")
+        self.hint_label.setAlignment(Qt.AlignCenter)
+        layout.addWidget(self.hint_label)
+
+        # 监听模式切换
+        self.gl_widget.installEventFilter(self)
+
+    def eventFilter(self, obj, event):
+        if obj == self.gl_widget and event.type() == event.KeyPress:
+            if event.key() == Qt.Key_Tab:
+                self._update_mode_label()
+        return super().eventFilter(obj, event)
+
+    def _update_mode_label(self):
+        if self.gl_widget.fps_mode:
+            self.mode_label.setText("[第一人称]")
+            self.hint_label.setText("WASD 移动 | 鼠标转向 | Space 上升 | Shift 下降 | Tab 切换")
+        else:
+            self.mode_label.setText("[轨道模式]")
+            self.hint_label.setText("轨道: 左键旋转 | 右键平移 | 滚轮缩放  |  Tab 切换第一人称")
 
     def toggle_connection(self):
         if self.pointcloud_thread and self.pointcloud_thread.is_connected():
@@ -495,8 +587,7 @@ class PointCloudWidget(QWidget):
     def connect_stream(self):
         url = self.url_input.text().strip()
         topic = self.topic_input.currentText().strip()
-        if not url or not topic:
-            return
+        if not url or not topic: return
         self.disconnect_stream()
         self._log(f"连接 {url}，话题 {topic}")
 
