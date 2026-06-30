@@ -187,7 +187,7 @@ class PointCloudThread(QThread):
 
 
 class PointCloudOpenGLWidget(QOpenGLWidget):
-    """OpenGL 点云渲染组件（VBO 加速 + 帧率限制）。"""
+    """OpenGL 点云渲染组件（VBO + 显示列表加速）。"""
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -206,13 +206,8 @@ class PointCloudOpenGLWidget(QOpenGLWidget):
         self._vbo_col = None
         self._vbo_count = 0
         self._need_vbo_update = False
-        self._pending_update = False
-
-        # 帧率限制定时器（60fps）
-        self._render_timer = QTimer()
-        self._render_timer.setInterval(16)  # ~60fps
-        self._render_timer.timeout.connect(self._do_render)
-        self._render_timer.start()
+        self._grid_list = 0
+        self._axis_list = 0
 
     def set_points(self, points: np.ndarray):
         if len(points) > self.max_points:
@@ -222,13 +217,7 @@ class PointCloudOpenGLWidget(QOpenGLWidget):
             self.points = points.copy()
         self._compute_colors()
         self._need_vbo_update = True
-        self._pending_update = True
-
-    def _do_render(self):
-        """定时器触发的渲染（限制 60fps）。"""
-        if self._pending_update:
-            self._pending_update = False
-            self.update()
+        self.update()
 
     def _compute_colors(self):
         if self.points is None or len(self.points) == 0:
@@ -252,6 +241,35 @@ class PointCloudOpenGLWidget(QOpenGLWidget):
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
         self._vbo_pos = glGenBuffers(1)
         self._vbo_col = glGenBuffers(1)
+        self._build_display_lists()
+
+    def _build_display_lists(self):
+        """预编译网格和坐标轴到显示列表（只执行一次）。"""
+        # 网格显示列表
+        self._grid_list = glGenLists(1)
+        glNewList(self._grid_list, GL_COMPILE)
+        glColor4f(0.3, 0.3, 0.3, 0.5)
+        glLineWidth(1.0)
+        glBegin(GL_LINES)
+        for i in range(-10, 11):
+            glVertex3f(i, -10, 0)
+            glVertex3f(i, 10, 0)
+            glVertex3f(-10, i, 0)
+            glVertex3f(10, i, 0)
+        glEnd()
+        glEndList()
+
+        # 坐标轴显示列表
+        self._axis_list = glGenLists(1)
+        glNewList(self._axis_list, GL_COMPILE)
+        glLineWidth(3.0)
+        glBegin(GL_LINES)
+        glColor3f(1, 0, 0); glVertex3f(0, 0, 0); glVertex3f(2, 0, 0)
+        glColor3f(0, 1, 0); glVertex3f(0, 0, 0); glVertex3f(0, 2, 0)
+        glColor3f(0, 0, 1); glVertex3f(0, 0, 0); glVertex3f(0, 0, 2)
+        glEnd()
+        glLineWidth(1.0)
+        glEndList()
 
     def resizeGL(self, w, h):
         glViewport(0, 0, w, h)
@@ -267,9 +285,10 @@ class PointCloudOpenGLWidget(QOpenGLWidget):
         glRotatef(self.rotation_x, 1, 0, 0)
         glRotatef(self.rotation_y, 0, 1, 0)
 
+        # 使用显示列表（预编译，极快）
         if self.show_axis:
-            self._draw_axis()
-        self._draw_grid()
+            glCallList(self._axis_list)
+        glCallList(self._grid_list)
 
         if self.points is not None and len(self.points) > 0:
             self._draw_points_vbo()
@@ -303,26 +322,6 @@ class PointCloudOpenGLWidget(QOpenGLWidget):
         glDisableClientState(GL_VERTEX_ARRAY)
         glBindBuffer(GL_ARRAY_BUFFER, 0)
 
-    def _draw_grid(self):
-        glColor4f(0.3, 0.3, 0.3, 0.5)
-        glLineWidth(1.0)
-        glBegin(GL_LINES)
-        for i in range(-10, 11):
-            glVertex3f(i, -10, 0)
-            glVertex3f(i, 10, 0)
-            glVertex3f(-10, i, 0)
-            glVertex3f(10, i, 0)
-        glEnd()
-
-    def _draw_axis(self):
-        glLineWidth(3.0)
-        glBegin(GL_LINES)
-        glColor3f(1, 0, 0); glVertex3f(0, 0, 0); glVertex3f(2, 0, 0)
-        glColor3f(0, 1, 0); glVertex3f(0, 0, 0); glVertex3f(0, 2, 0)
-        glColor3f(0, 0, 1); glVertex3f(0, 0, 0); glVertex3f(0, 0, 2)
-        glEnd()
-        glLineWidth(1.0)
-
     def mousePressEvent(self, event):
         self.last_mouse_pos = event.position()
 
@@ -338,11 +337,11 @@ class PointCloudOpenGLWidget(QOpenGLWidget):
             self.pan_x += dx * 0.01
             self.pan_y -= dy * 0.01
         self.last_mouse_pos = event.position()
-        self._pending_update = True  # 标记需要重绘，不立即调用 update()
+        self.update()
 
     def wheelEvent(self, event):
         self.zoom += event.angleDelta().y() * 0.01
-        self._pending_update = True
+        self.update()
 
     def reset_view(self):
         self.rotation_x = 30.0
@@ -350,7 +349,7 @@ class PointCloudOpenGLWidget(QOpenGLWidget):
         self.zoom = -10.0
         self.pan_x = 0.0
         self.pan_y = 0.0
-        self._pending_update = True
+        self.update()
 
     def cleanup(self):
         if self._vbo_pos:
@@ -359,6 +358,12 @@ class PointCloudOpenGLWidget(QOpenGLWidget):
         if self._vbo_col:
             glDeleteBuffers(1, [self._vbo_col])
             self._vbo_col = None
+        if self._grid_list:
+            glDeleteLists(self._grid_list, 1)
+            self._grid_list = 0
+        if self._axis_list:
+            glDeleteLists(self._axis_list, 1)
+            self._axis_list = 0
 
 
 class PointCloudWidget(QWidget):
