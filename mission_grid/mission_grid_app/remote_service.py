@@ -4,9 +4,7 @@
 
 通过 SSH 连接 OrangePi，远程启动/停止各种 ROS 服务。
 
-本模块包含：
-- SSHWorker: SSH 连接和命令执行线程
-- RemoteServiceWidget: 远程服务管理界面
+使用单个 Shell 会话执行所有命令，避免创建过多 SSH 通道。
 """
 
 from __future__ import annotations
@@ -17,14 +15,13 @@ from PySide6.QtCore import QThread, Signal, Qt
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel,
     QLineEdit, QPushButton, QGroupBox, QCheckBox,
-    QTextEdit, QFrame
+    QTextEdit
 )
 
 
 class SSHWorker(QThread):
-    """SSH 命令执行线程。"""
+    """SSH 连接和命令执行线程。"""
     output_received = Signal(str)
-    command_finished = Signal(int)  # return code
     connection_changed = Signal(bool)
     error_occurred = Signal(str)
 
@@ -76,30 +73,25 @@ class SSHWorker(QThread):
             self.connection_changed.emit(False)
 
     def _execute_command(self, cmd: str):
-        """执行远程命令并输出结果。"""
+        """执行远程命令。"""
         try:
-            self.output_received.emit(f">>> {cmd[:80]}...")
-            # 执行命令，超时设为 10 秒
+            self.output_received.emit(f">>> {cmd}")
             stdin, stdout, stderr = self.client.exec_command(cmd, timeout=10)
-
-            # 对于后台命令，立即返回
-            if '&' in cmd:
-                time.sleep(0.5)
-                self.output_received.emit("[后台命令] 已发送")
-                return
-
-            exit_code = stdout.channel.recv_exit_status()
 
             # 读取输出
             out = stdout.read().decode('utf-8', errors='replace').strip()
             err = stderr.read().decode('utf-8', errors='replace').strip()
 
             if out:
-                self.output_received.emit(out)
+                for line in out.split('\n'):
+                    if line.strip():
+                        self.output_received.emit(line.strip())
             if err:
-                self.output_received.emit(f"[stderr] {err}")
+                for line in err.split('\n'):
+                    if line.strip():
+                        self.output_received.emit(f"[stderr] {line.strip()}")
 
-            self.command_finished.emit(exit_code)
+            exit_code = stdout.channel.recv_exit_status()
             self.output_received.emit(f"[完成] 退出码: {exit_code}")
 
         except Exception as e:
@@ -135,42 +127,42 @@ class RemoteServiceWidget(QWidget):
         {
             "name": "MAVROS",
             "desc": "飞控通信（遥测）",
-            "cmd_start": "nohup bash -c 'source /opt/ros/noetic/setup.bash --extend; roslaunch mavros apm.launch fcu_url:=udp://:14555@192.168.144.15:14550' > /dev/null 2>&1 &",
+            "cmd_start": "nohup bash -c 'source /opt/ros/noetic/setup.bash --extend; roslaunch mavros apm.launch fcu_url:=udp://:14555@192.168.144.15:14550' > /tmp/mavros.log 2>&1 &",
             "cmd_stop": "pkill -f mavros",
             "check": "pgrep -f mavros",
         },
         {
             "name": "Livox 激光雷达",
             "desc": "MID360 点云数据源",
-            "cmd_start": "nohup bash -c 'source /opt/ros/noetic/setup.bash --extend; source /home/orangepi/livox_ws/devel/setup.bash --extend; roslaunch livox_ros_driver2 msg_MID360s.launch' > /dev/null 2>&1 &",
+            "cmd_start": "nohup bash -c 'source /opt/ros/noetic/setup.bash --extend; source /home/orangepi/livox_ws/devel/setup.bash --extend; roslaunch livox_ros_driver2 msg_MID360s.launch' > /tmp/livox.log 2>&1 &",
             "cmd_stop": "pkill -f livox_ros_driver2",
             "check": "pgrep -f livox_ros_driver2",
         },
         {
             "name": "SLAM",
             "desc": "室内定位（FAST_LIO）",
-            "cmd_start": "nohup bash -c 'source /opt/ros/noetic/setup.bash --extend; source /home/orangepi/tools_ws/devel/setup.bash --extend; rosrun manage_bridge_node manage_bridge_node' > /dev/null 2>&1 &",
+            "cmd_start": "nohup bash -c 'source /opt/ros/noetic/setup.bash --extend; source /home/orangepi/tools_ws/devel/setup.bash --extend; rosrun manage_bridge_node manage_bridge_node' > /tmp/slam.log 2>&1 &",
             "cmd_stop": "pkill -f manage_bridge_node",
             "check": "pgrep -f manage_bridge_node",
         },
         {
             "name": "摄像头",
             "desc": "RealSense 下视摄像头",
-            "cmd_start": "nohup bash -c 'source /opt/ros/noetic/setup.bash --extend; source /home/orangepi/ctrl_ws/devel/setup.bash --extend; roslaunch cam_pkg cam_pub.launch' > /dev/null 2>&1 &",
+            "cmd_start": "nohup bash -c 'source /opt/ros/noetic/setup.bash --extend; source /home/orangepi/ctrl_ws/devel/setup.bash --extend; roslaunch cam_pkg cam_pub.launch' > /tmp/camera.log 2>&1 &",
             "cmd_stop": "pkill -f cam_pub",
             "check": "pgrep -f cam_pub",
         },
         {
             "name": "web_video_server",
             "desc": "摄像头 HTTP 视频流",
-            "cmd_start": "nohup bash -c 'source /opt/ros/noetic/setup.bash --extend; rosrun web_video_server web_video_server' > /dev/null 2>&1 &",
+            "cmd_start": "nohup bash -c 'source /opt/ros/noetic/setup.bash --extend; rosrun web_video_server web_video_server' > /tmp/web_video.log 2>&1 &",
             "cmd_stop": "pkill -f web_video_server",
             "check": "pgrep -f web_video_server",
         },
         {
             "name": "rosbridge",
             "desc": "点云 WebSocket 流",
-            "cmd_start": "nohup bash -c 'source /opt/ros/noetic/setup.bash --extend; roslaunch rosbridge_server rosbridge_websocket.launch' > /dev/null 2>&1 &",
+            "cmd_start": "nohup bash -c 'source /opt/ros/noetic/setup.bash --extend; roslaunch rosbridge_server rosbridge_websocket.launch' > /tmp/rosbridge.log 2>&1 &",
             "cmd_stop": "pkill -f rosbridge",
             "check": "pgrep -f rosbridge",
         },
@@ -181,7 +173,7 @@ class RemoteServiceWidget(QWidget):
         self.ssh_worker = None
         self.service_checks = {}
         self.service_status = {}
-        self._starting = False  # 防止重复启动
+        self._starting = False
         self.setup_ui()
 
     def setup_ui(self):
@@ -341,7 +333,7 @@ class RemoteServiceWidget(QWidget):
             self.status_label.setStyleSheet("color: red; font-weight: bold;")
 
     def start_selected(self):
-        """串行启动选中的服务，等一个完成后再启动下一个。"""
+        """启动选中的服务。"""
         if self._starting:
             return
         if not self.ssh_worker or not self.ssh_worker.isRunning():
@@ -366,7 +358,7 @@ class RemoteServiceWidget(QWidget):
         ).start()
 
     def _start_services_serial(self, services):
-        """串行启动服务（在后台线程执行）。"""
+        """串行启动服务。"""
         self._starting = True
         try:
             for i, svc in enumerate(services):
@@ -375,23 +367,13 @@ class RemoteServiceWidget(QWidget):
                     break
 
                 self.log(f"[{i+1}/{len(services)}] 启动 {svc['name']}...")
+                self.ssh_worker.run_command(svc['cmd_start'])
 
-                # 直接执行命令（不用队列）
-                try:
-                    stdin, stdout, stderr = self.ssh_worker.client.exec_command(
-                        svc['cmd_start'], timeout=5
-                    )
-                    # 等待命令执行完成
-                    stdout.channel.recv_exit_status()
-                except Exception as e:
-                    self.log(f"  命令执行异常: {e}")
-
-                # 等待 5 秒让服务启动
-                self.log(f"  等待 5 秒...")
-                time.sleep(5)
+                # 等待命令执行
+                time.sleep(2)
 
             self.log("[完成] 所有服务启动命令已发送")
-            self.log("[提示] 请点击「刷新状态」检查服务")
+            self.log("[提示] 请等待 10 秒后点击「刷新状态」检查服务")
         except Exception as e:
             self.log(f"[错误] 启动失败: {e}")
         finally:
@@ -406,9 +388,9 @@ class RemoteServiceWidget(QWidget):
             if self.service_checks[svc["name"]].isChecked():
                 self.log(f"停止 {svc['name']}...")
                 self.ssh_worker.run_command(svc["cmd_stop"])
-                time.sleep(0.2)
+                time.sleep(0.5)
 
-        threading.Timer(1.0, self.check_all_status).start()
+        threading.Timer(2.0, self.check_all_status).start()
 
     def start_all(self):
         """一键启动全部服务。"""
@@ -418,11 +400,11 @@ class RemoteServiceWidget(QWidget):
         self.start_selected()
 
     def check_all_status(self):
-        """检查所有服务状态（串行执行，避免创建过多 SSH 通道）。"""
+        """检查所有服务状态。"""
         if not self.ssh_worker or not self.ssh_worker.isRunning():
             return
 
-        # 在单个线程中串行检查所有服务
+        # 在单个线程中串行检查
         threading.Thread(
             target=self._check_all_services_serial,
             daemon=True
@@ -440,7 +422,7 @@ class RemoteServiceWidget(QWidget):
                 exit_code = stdout.channel.recv_exit_status()
                 alive = exit_code == 0
 
-                # 在主线程中更新 UI
+                # 更新 UI
                 status_widget = self.service_status[svc["name"]]
                 if alive:
                     status_widget.setText("●")
@@ -452,7 +434,7 @@ class RemoteServiceWidget(QWidget):
                     status_widget.setToolTip("已停止")
             except Exception:
                 pass
-            time.sleep(0.5)  # 间隔 0.5 秒，避免 SSH 过载
+            time.sleep(0.5)
 
     def log(self, msg: str):
         ts = time.strftime("%H:%M:%S")
