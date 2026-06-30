@@ -370,6 +370,10 @@ class RemoteServiceWidget(QWidget):
         self._starting = True
         try:
             for i, svc in enumerate(services):
+                if not self.ssh_worker or not self.ssh_worker.isRunning():
+                    self.log("[错误] SSH 连接断开")
+                    break
+
                 self.log(f"[{i+1}/{len(services)}] 启动 {svc['name']}...")
 
                 # 执行启动命令
@@ -377,12 +381,15 @@ class RemoteServiceWidget(QWidget):
                 self.ssh_worker.run_command(cmd)
 
                 # 等待服务启动（检查进程是否存在）
-                max_wait = 10  # 最多等待 10 秒
+                max_wait = 10
                 for wait in range(max_wait):
                     time.sleep(1)
-                    if self._check_service_running(svc):
-                        self.log(f"✓ {svc['name']} 已启动")
-                        break
+                    try:
+                        if self._check_service_running(svc):
+                            self.log(f"✓ {svc['name']} 已启动")
+                            break
+                    except Exception:
+                        pass
                 else:
                     self.log(f"⚠ {svc['name']} 启动超时，继续下一个")
 
@@ -394,20 +401,24 @@ class RemoteServiceWidget(QWidget):
             self.log(f"[错误] 启动失败: {e}")
         finally:
             self._starting = False
-            # 延迟检查状态
-            threading.Timer(2.0, self.check_all_status).start()
+            try:
+                threading.Timer(2.0, self.check_all_status).start()
+            except Exception:
+                pass
 
     def _check_service_running(self, svc):
-        """检查服务是否在运行。"""
+        """检查服务是否在运行（线程安全）。"""
         try:
             if not self.ssh_worker or not self.ssh_worker.client:
                 return False
-            stdin, stdout, stderr = self.ssh_worker.client.exec_command(
-                svc["check"], timeout=5
-            )
-            exit_code = stdout.channel.recv_exit_status()
-            return exit_code == 0
-        except:
+            # 使用锁保护 SSH 客户端访问
+            with self.ssh_worker._lock:
+                stdin, stdout, stderr = self.ssh_worker.client.exec_command(
+                    svc["check"], timeout=5
+                )
+                exit_code = stdout.channel.recv_exit_status()
+                return exit_code == 0
+        except Exception:
             return False
 
     def stop_selected(self):
