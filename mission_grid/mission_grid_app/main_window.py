@@ -321,11 +321,6 @@ class MainWindow(QMainWindow):
         self.heartbeat_timer.timeout.connect(self._heartbeat_tick)
         self.heartbeat_timer.start(1000)
 
-        # ----------------------------------------------------------
-        # 自动连接摄像头
-        # ----------------------------------------------------------
-        QTimer.singleShot(1000, self._auto_connect_camera)
-
     # ==========================================================
     # 辅助 UI 构建
     # ==========================================================

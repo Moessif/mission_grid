@@ -55,6 +55,11 @@ class VideoStreamThread(QThread):
 
     def run(self):
         self.running = True
+
+        # 设置超时，避免阻塞
+        import socket
+        socket.setdefaulttimeout(5)
+
         self.cap = cv2.VideoCapture(self.url)
 
         if not self.cap.isOpened():
