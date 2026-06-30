@@ -196,7 +196,7 @@ class CameraWidget(QWidget):
         layout.addWidget(self.video_label)
 
     def toggle_connection(self):
-        if self.video_thread and self.video_thread.is_connected():
+        if self.video_thread:
             self.disconnect_stream()
         else:
             self.connect_stream()

@@ -502,14 +502,7 @@ class PointCloudWidget(QWidget):
         self.pointcloud_thread = None
         self.frame_count = 0
         self.last_fps_time = time.time()
-        self._auto_refresh = True  # 是否自动刷新
         self.setup_ui()
-
-        # 定时刷新定时器（每 10 秒重连一次，清除累积延迟）
-        self._refresh_timer = QTimer()
-        self._refresh_timer.setInterval(10000)  # 10 秒
-        self._refresh_timer.timeout.connect(self._auto_reconnect)
-        self._refresh_timer.start()
 
     def setup_ui(self):
         layout = QVBoxLayout(self)
@@ -600,7 +593,7 @@ class PointCloudWidget(QWidget):
             self.hint_label.setText("轨道: 左键旋转 | 右键平移 | 滚轮缩放  |  按 F 切换第一人称")
 
     def toggle_connection(self):
-        if self.pointcloud_thread and self.pointcloud_thread.is_connected():
+        if self.pointcloud_thread:
             self.disconnect_stream()
         else:
             self.connect_stream()
@@ -634,29 +627,6 @@ class PointCloudWidget(QWidget):
         self.status_label.setStyleSheet("color: gray; font-weight: bold;")
         self.point_count_label.setText("点数: 0")
         self.fps_label.setText("FPS: 0")
-
-    def _auto_reconnect(self):
-        """定时自动重连，清除累积延迟。"""
-        if self._auto_refresh and self.pointcloud_thread and self.pointcloud_thread.is_connected():
-            url = self.url_input.text().strip()
-            topic = self.topic_input.currentText().strip()
-            if url and topic:
-                # 断开并重新连接
-                self.disconnect_stream()
-                self._log("自动刷新连接...")
-
-                self.pointcloud_thread = PointCloudThread(url, topic)
-                self.pointcloud_thread.pointcloud_ready.connect(self.update_pointcloud)
-                self.pointcloud_thread.error_occurred.connect(self.handle_error)
-                self.pointcloud_thread.connection_changed.connect(self.update_connection_status)
-                self.pointcloud_thread.debug_message.connect(self._log)
-                self.pointcloud_thread.start()
-
-                self.connect_btn.setText("断开")
-                self.status_label.setText("● 刷新中...")
-                self.status_label.setStyleSheet("color: orange; font-weight: bold;")
-                self.frame_count = 0
-                self.last_fps_time = time.time()
 
     def update_pointcloud(self, points: np.ndarray):
         self.gl_widget.set_points(points)

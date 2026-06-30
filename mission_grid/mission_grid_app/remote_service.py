@@ -12,7 +12,7 @@ from __future__ import annotations
 import time
 import socket
 import threading
-from PySide6.QtCore import QThread, Signal, Qt
+from PySide6.QtCore import QThread, Signal, Qt, QTimer
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel,
     QLineEdit, QPushButton, QGroupBox, QCheckBox,
@@ -188,6 +188,12 @@ class RemoteServiceWidget(QWidget):
         self.service_status = {}
         self._starting = False
         self.setup_ui()
+
+        # 自动刷新状态定时器（每 2 秒）
+        self._status_timer = QTimer()
+        self._status_timer.setInterval(2000)  # 2 秒
+        self._status_timer.timeout.connect(self.check_all_status)
+        self._status_timer.start()
 
     def setup_ui(self):
         layout = QVBoxLayout(self)
