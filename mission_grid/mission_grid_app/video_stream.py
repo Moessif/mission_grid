@@ -64,6 +64,9 @@ class VideoStreamThread(QThread):
             self.connection_changed.emit(False)
             return
             
+        # 降低延迟的配置
+        self.cap.set(cv2.CAP_PROP_BUFFERSIZE, 1)  # 最小缓冲区
+        
         self.connection_changed.emit(True)
         
         while self.running and self.cap.isOpened():
@@ -73,6 +76,12 @@ class VideoStreamThread(QThread):
                 self.connection_changed.emit(False)
                 break
                 
+            # 降低分辨率以减少延迟
+            height, width = frame.shape[:2]
+            if width > 640:
+                scale = 640 / width
+                frame = cv2.resize(frame, None, fx=scale, fy=scale)
+            
             # 转换 OpenCV 图像为 QPixmap
             rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
             h, w, ch = rgb_frame.shape
@@ -132,8 +141,8 @@ class CameraWidget(QWidget):
         # URL 输入
         conn_layout.addWidget(QLabel("视频流地址:"))
         self.url_input = QLineEdit()
-        self.url_input.setPlaceholderText("http://<ip>:8080/stream?topic=/camera/color/image_raw")
-        self.url_input.setText("http://10.209.49.217:8080/stream?topic=/camera/color/image_raw")
+        self.url_input.setPlaceholderText("http://<ip>:8080/stream?topic=/image")
+        self.url_input.setText("http://10.209.49.217:8080/stream?topic=/image")
         conn_layout.addWidget(self.url_input)
         
         # 连接按钮
