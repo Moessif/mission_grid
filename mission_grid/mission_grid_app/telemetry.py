@@ -95,6 +95,7 @@ class TelemetryWorker(QThread):
 
         LOCAL_POSITION_NED → position_updated 信号
         HEARTBEAT → status_updated 信号（解析解锁状态和飞行模式）
+        CM_STATUS → node_status_updated 信号（节点状态位掩码）
         """
         msg_type = msg.get_type()
         if msg_type == 'LOCAL_POSITION_NED':
@@ -103,6 +104,10 @@ class TelemetryWorker(QThread):
             armed = bool(msg.base_mode & 128)  # bit7 = ARMED
             mode = msg.custom_mode
             self.status_updated.emit({"armed": armed, "mode": mode})
+        elif msg_type == 'CM_STATUS':
+            # 节点状态位掩码（自定义消息）
+            bitmask = getattr(msg, 'bitmask', 0)
+            self.node_status_updated.emit(bitmask)
 
     def send_heartbeat(self):
         """
