@@ -90,6 +90,7 @@ from .path_planner import plan_path, plan_path_all
 from .code_generator import export_mission
 from .telemetry import TelemetryWorker
 from .video_stream import CameraWidget
+from .point_cloud import PointCloudWidget
 
 
 class MainWindow(QMainWindow):
@@ -368,21 +369,10 @@ class MainWindow(QMainWindow):
         layout.addWidget(self.node_table)
         return widget
 
-    def _build_data_tab(self):
-        """数据监控标签页。显示 MAVLink 消息数据（飞行状态、节点状态、位置）。"""
-        widget = QWidget()
-        layout = QVBoxLayout(widget)
-        layout.setContentsMargins(0, 0, 0, 0)
-        self.data_table = QTableWidget(3, 2)
-        self.data_table.setHorizontalHeaderLabels(["消息", "数据"])
-        self.data_table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
-        self.data_table.verticalHeader().setVisible(False)
-        msgs = [("FLY_STATUS (#150)", "-"), ("CM_STATUS (#151)", "-"), ("POSITION_DATA (#152)", "-")]
-        for i, (name, val) in enumerate(msgs):
-            self.data_table.setItem(i, 0, QTableWidgetItem(name))
-            self.data_table.setItem(i, 1, QTableWidgetItem(val))
-        layout.addWidget(self.data_table)
-        return widget
+    def _build_lidar_tab(self):
+        """3D 点云标签页。"""
+        self.pointcloud_widget = PointCloudWidget()
+        return self.pointcloud_widget
 
     def _build_camera_tab(self):
         """摄像头预览标签页。"""
