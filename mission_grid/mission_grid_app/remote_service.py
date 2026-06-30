@@ -213,7 +213,7 @@ class RemoteServiceWidget(QWidget):
         self.conn_btn = QPushButton("连接")
         self.conn_btn.clicked.connect(self.toggle_connection)
         conn_layout.addWidget(self.conn_btn)
-        self.status_label = QLabel("● 未连接")
+        self.status_label = QLabel("🚫 未连接")
         self.status_label.setStyleSheet("color: gray; font-weight: bold;")
         conn_layout.addWidget(self.status_label)
         conn_layout.addStretch()
@@ -254,9 +254,9 @@ class RemoteServiceWidget(QWidget):
             row.addWidget(desc)
 
             # 状态指示
-            status = QLabel("●")
-            status.setFixedWidth(20)
-            status.setStyleSheet("color: gray;")
+            status = QLabel("🚫")
+            status.setFixedWidth(30)
+            status.setStyleSheet("font-size: 16px;")
             self.service_status[svc["name"]] = status
             row.addWidget(status)
 
@@ -325,7 +325,7 @@ class RemoteServiceWidget(QWidget):
         self.ssh_worker.start()
 
         self.conn_btn.setText("断开")
-        self.status_label.setText("● 连接中...")
+        self.status_label.setText("🔄 连接中...")
         self.status_label.setStyleSheet("color: orange; font-weight: bold;")
 
     def disconnect_ssh(self):
@@ -333,16 +333,16 @@ class RemoteServiceWidget(QWidget):
             self.ssh_worker.stop()
             self.ssh_worker = None
         self.conn_btn.setText("连接")
-        self.status_label.setText("● 未连接")
+        self.status_label.setText("🚫 未连接")
         self.status_label.setStyleSheet("color: gray; font-weight: bold;")
 
     def on_connection_changed(self, connected: bool):
         if connected:
-            self.status_label.setText("● 已连接")
-            self.status_label.setStyleSheet("color: green; font-weight: bold;")
+            self.status_label.setText("✅ 已连接")
+            self.status_label.setStyleSheet("color: #2E7D32; font-weight: bold;")
             self.check_all_status()
         else:
-            self.status_label.setText("● 连接断开")
+            self.status_label.setText("🚫 连接断开")
             self.status_label.setStyleSheet("color: red; font-weight: bold;")
 
     def start_selected(self):
@@ -445,12 +445,10 @@ class RemoteServiceWidget(QWidget):
                 # 更新 UI
                 status_widget = self.service_status[svc["name"]]
                 if alive:
-                    status_widget.setText("●")
-                    status_widget.setStyleSheet("color: #2E7D32; font-weight: bold;")
+                    status_widget.setText("✅")
                     status_widget.setToolTip("运行中")
                 else:
-                    status_widget.setText("●")
-                    status_widget.setStyleSheet("color: gray;")
+                    status_widget.setText("🚫")
                     status_widget.setToolTip("已停止")
             except Exception:
                 pass
