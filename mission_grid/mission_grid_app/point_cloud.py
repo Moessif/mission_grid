@@ -17,7 +17,7 @@ import struct
 import time
 import threading
 import numpy as np
-from PySide6.QtCore import QThread, Signal, Qt, QTimer
+from PySide6.QtCore import QThread, Signal, Qt, QTimer, QEvent
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel,
     QLineEdit, QPushButton, QGroupBox, QCheckBox, QSpinBox, QTextEdit,
@@ -565,7 +565,7 @@ class PointCloudWidget(QWidget):
         self.gl_widget.installEventFilter(self)
 
     def eventFilter(self, obj, event):
-        if obj == self.gl_widget and event.type() == event.KeyPress:
+        if obj == self.gl_widget and event.type() == QEvent.Type.KeyPress:
             if event.key() == Qt.Key_Tab:
                 self._update_mode_label()
         return super().eventFilter(obj, event)
