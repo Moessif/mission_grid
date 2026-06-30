@@ -376,16 +376,22 @@ class RemoteServiceWidget(QWidget):
 
                 self.log(f"[{i+1}/{len(services)}] 启动 {svc['name']}...")
 
-                # 执行启动命令
-                cmd = svc['cmd_start']
-                self.ssh_worker.run_command(cmd)
+                # 直接执行命令（不用队列）
+                try:
+                    stdin, stdout, stderr = self.ssh_worker.client.exec_command(
+                        svc['cmd_start'], timeout=5
+                    )
+                    # 等待命令执行完成
+                    stdout.channel.recv_exit_status()
+                except Exception as e:
+                    self.log(f"  命令执行异常: {e}")
 
-                # 等待 3 秒让服务启动（不检查进程，避免创建过多 SSH 通道）
-                time.sleep(3)
-                self.log(f"  {svc['name']} 命令已发送")
+                # 等待 5 秒让服务启动
+                self.log(f"  等待 5 秒...")
+                time.sleep(5)
 
             self.log("[完成] 所有服务启动命令已发送")
-            self.log("[提示] 请等待 10 秒后点击「刷新状态」检查服务")
+            self.log("[提示] 请点击「刷新状态」检查服务")
         except Exception as e:
             self.log(f"[错误] 启动失败: {e}")
         finally:
