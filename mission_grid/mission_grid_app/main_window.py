@@ -373,12 +373,6 @@ class MainWindow(QMainWindow):
             self.node_table.setItem(i, 3, QTableWidgetItem(perm))
         layout.addWidget(self.node_table)
 
-        # 测试按钮
-        test_btn = QPushButton("测试：模拟节点状态更新")
-        test_btn.setStyleSheet("color: #7c4dff;")
-        test_btn.clicked.connect(self._test_node_status)
-        layout.addWidget(test_btn)
-
         return widget
 
     def _build_lidar_tab(self):
@@ -407,12 +401,6 @@ class MainWindow(QMainWindow):
             self.data_table.setItem(i, 0, QTableWidgetItem(name))
             self.data_table.setItem(i, 1, QTableWidgetItem(val))
         layout.addWidget(self.data_table)
-
-        # 测试按钮
-        test_btn = QPushButton("测试：模拟遥测数据更新")
-        test_btn.setStyleSheet("color: #7c4dff;")
-        test_btn.clicked.connect(self._test_telemetry_data)
-        layout.addWidget(test_btn)
 
         return widget
 
@@ -823,34 +811,6 @@ class MainWindow(QMainWindow):
     def _heartbeat_tick(self):
         """定时发送 MAVLink 心跳（每秒一次）。"""
         self.telemetry.send_heartbeat()
-
-    # ==========================================================
-    # 测试方法
-    # ==========================================================
-
-    def _test_node_status(self):
-        """测试：模拟节点状态更新。"""
-        import random
-        # 随机生成节点状态（模拟部分节点运行）
-        bitmask = random.randint(0, 63)  # 6 位，0-63
-        self._on_node_status(bitmask)
-        self.status_label.setText(f"测试：模拟节点状态 bitmask={bitmask}")
-
-    def _test_telemetry_data(self):
-        """测试：模拟遥测数据更新。"""
-        import random
-        # 模拟飞行状态
-        armed = random.choice([True, False])
-        mode = random.choice([0, 1, 2, 3])
-        self._on_status({"armed": armed, "mode": mode})
-
-        # 模拟位置
-        x = random.uniform(-2, 2)
-        y = random.uniform(-2, 2)
-        z = random.uniform(0, 3)
-        self._on_position(x, y, z)
-
-        self.status_label.setText(f"测试：模拟遥测数据 x={x:.1f} y={y:.1f} z={z:.1f}")
 
     def closeEvent(self, event):
         """窗口关闭：保存分割器状态、停止遥测、清除无人机标记。"""
