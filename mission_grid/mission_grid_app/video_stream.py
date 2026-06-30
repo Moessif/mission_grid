@@ -149,8 +149,8 @@ class CameraWidget(QWidget):
 
         conn_layout.addWidget(QLabel("视频流地址:"))
         self.url_input = QLineEdit()
-        self.url_input.setPlaceholderText("http://<ip>:8080/stream?topic=/camera/color/image_raw")
-        self.url_input.setText("http://10.209.49.217:8080/stream?topic=/camera/color/image_raw")
+        self.url_input.setPlaceholderText("http://<ip>:8080/stream?topic=/image")
+        self.url_input.setText("http://10.209.49.217:8080/stream?topic=/image")
         conn_layout.addWidget(self.url_input)
 
         self.connect_btn = QPushButton("连接")
