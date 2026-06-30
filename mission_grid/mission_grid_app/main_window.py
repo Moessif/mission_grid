@@ -374,26 +374,31 @@ class MainWindow(QMainWindow):
         self.pointcloud_widget = PointCloudWidget()
         return self.pointcloud_widget
 
+    def _build_data_tab(self):
+        """数据监控标签页。显示 MAVLink 消息数据（飞行状态、节点状态、位置）。"""
+        widget = QWidget()
+        layout = QVBoxLayout(widget)
+        layout.setContentsMargins(0, 0, 0, 0)
+        self.data_table = QTableWidget(3, 2)
+        self.data_table.setHorizontalHeaderLabels(["消息", "数据"])
+        self.data_table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
+        self.data_table.verticalHeader().setVisible(False)
+        msgs = [("FLY_STATUS (#150)", "-"), ("CM_STATUS (#151)", "-"), ("POSITION_DATA (#152)", "-")]
+        for i, (name, val) in enumerate(msgs):
+            self.data_table.setItem(i, 0, QTableWidgetItem(name))
+            self.data_table.setItem(i, 1, QTableWidgetItem(val))
+        layout.addWidget(self.data_table)
+        return widget
+
     def _build_camera_tab(self):
         """摄像头预览标签页。"""
         self.camera_widget = CameraWidget()
         return self.camera_widget
 
     def _build_lidar_tab(self):
-        """3D 点云标签页（占位符）。需要机载 rosbridge_server 支持。"""
-        widget = QWidget()
-        layout = QVBoxLayout(widget)
-        layout.setContentsMargins(0, 0, 0, 0)
-        icon = QLabel("🧊")
-        icon.setStyleSheet("font-size:48px;")
-        icon.setAlignment(Qt.AlignCenter)
-        layout.addWidget(icon)
-        hint = QLabel("3D 点云\n需要机载 rosbridge_server 支持")
-        hint.setAlignment(Qt.AlignCenter)
-        hint.setStyleSheet(f"color:{c.on_surface_variant}; font-size:13px;")
-        layout.addWidget(hint)
-        layout.addStretch()
-        return widget
+        """3D 点云标签页。"""
+        self.pointcloud_widget = PointCloudWidget()
+        return self.pointcloud_widget
 
     # ==========================================================
     # 摄像头自动连接
