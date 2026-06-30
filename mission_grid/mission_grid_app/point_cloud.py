@@ -187,7 +187,7 @@ class PointCloudThread(QThread):
 
 
 class PointCloudOpenGLWidget(QOpenGLWidget):
-    """OpenGL 点云渲染组件（VBO 加速）。"""
+    """OpenGL 点云渲染组件（VBO 加速 + 帧率限制）。"""
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -206,6 +206,13 @@ class PointCloudOpenGLWidget(QOpenGLWidget):
         self._vbo_col = None
         self._vbo_count = 0
         self._need_vbo_update = False
+        self._pending_update = False
+
+        # 帧率限制定时器（60fps）
+        self._render_timer = QTimer()
+        self._render_timer.setInterval(16)  # ~60fps
+        self._render_timer.timeout.connect(self._do_render)
+        self._render_timer.start()
 
     def set_points(self, points: np.ndarray):
         if len(points) > self.max_points:
@@ -215,7 +222,13 @@ class PointCloudOpenGLWidget(QOpenGLWidget):
             self.points = points.copy()
         self._compute_colors()
         self._need_vbo_update = True
-        self.update()
+        self._pending_update = True
+
+    def _do_render(self):
+        """定时器触发的渲染（限制 60fps）。"""
+        if self._pending_update:
+            self._pending_update = False
+            self.update()
 
     def _compute_colors(self):
         if self.points is None or len(self.points) == 0:
@@ -325,11 +338,11 @@ class PointCloudOpenGLWidget(QOpenGLWidget):
             self.pan_x += dx * 0.01
             self.pan_y -= dy * 0.01
         self.last_mouse_pos = event.position()
-        self.update()
+        self._pending_update = True  # 标记需要重绘，不立即调用 update()
 
     def wheelEvent(self, event):
         self.zoom += event.angleDelta().y() * 0.01
-        self.update()
+        self._pending_update = True
 
     def reset_view(self):
         self.rotation_x = 30.0
@@ -337,7 +350,7 @@ class PointCloudOpenGLWidget(QOpenGLWidget):
         self.zoom = -10.0
         self.pan_x = 0.0
         self.pan_y = 0.0
-        self.update()
+        self._pending_update = True
 
     def cleanup(self):
         if self._vbo_pos:
