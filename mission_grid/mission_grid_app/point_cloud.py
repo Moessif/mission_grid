@@ -4,10 +4,11 @@
 
 从机载 rosbridge_server 获取点云数据并在 Qt 界面中显示。
 
-关键优化：
-- 接收端丢帧：只保留最新一帧，避免堆积
-- 渲染限速：最高 30fps，超时自动跳过
-- VBO 加速渲染
+操控方式（类似 Minecraft）：
+- 鼠标左键拖动：旋转视角
+- 鼠标右键拖动：平移
+- 滚轮：缩放
+- 重置视图按钮：回到初始视角
 """
 
 from __future__ import annotations
@@ -18,13 +19,14 @@ import struct
 import time
 import threading
 import numpy as np
-from PySide6.QtCore import QThread, Signal, Qt, QTimer
+from PySide6.QtCore import QThread, Signal, Qt
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel,
     QLineEdit, QPushButton, QGroupBox, QCheckBox, QSpinBox, QTextEdit,
     QComboBox
 )
 from PySide6.QtOpenGLWidgets import QOpenGLWidget
+from PySide6.QtGui import QCursor
 from OpenGL.GL import *
 from OpenGL.GLU import *
 
@@ -62,7 +64,6 @@ class PointCloudThread(QThread):
             self.ws.send(json.dumps(subscribe_msg))
             self._log(f"已订阅话题: {self.topic}")
 
-            # 启动定时发送线程（30fps 限制）
             sender = threading.Thread(target=self._sender_loop, daemon=True)
             sender.start()
 
@@ -91,9 +92,8 @@ class PointCloudThread(QThread):
             self.connection_changed.emit(False)
 
     def _sender_loop(self):
-        """定时发送最新帧（30fps 限制，丢弃中间帧）。"""
         while self.running:
-            time.sleep(1.0 / 30)  # 30fps
+            time.sleep(1.0 / 30)
             with self._lock:
                 if self._latest_points is not None:
                     points = self._latest_points
@@ -110,7 +110,6 @@ class PointCloudThread(QThread):
                 payload = msg.get("msg", {})
                 points = self._parse_any_pointcloud(payload)
                 if points is not None and len(points) > 0:
-                    # 只保存最新帧，丢弃旧帧
                     with self._lock:
                         self._latest_points = points
         except:
@@ -146,28 +145,23 @@ class PointCloudThread(QThread):
             data = msg.get("data", "")
             if not data:
                 return None
-
             raw_data = base64.b64decode(data)
             if not point_step:
                 point_step = 12
-
             num_points = len(raw_data) // point_step
             if num_points == 0:
                 return None
-
             x_off, y_off, z_off = 0, 4, 8
             for f in fields:
                 name = f.get("name", "")
                 if name == "x": x_off = f.get("offset", 0)
                 elif name == "y": y_off = f.get("offset", 0)
                 elif name == "z": z_off = f.get("offset", 0)
-
             raw = np.frombuffer(raw_data, dtype=np.uint8).reshape(num_points, point_step)
             x = raw[:, x_off:x_off+4].view('<f4').flatten()
             y = raw[:, y_off:y_off+4].view('<f4').flatten()
             z = raw[:, z_off:z_off+4].view('<f4').flatten()
             points = np.column_stack([x, y, z])
-
             valid = np.isfinite(points).all(axis=1) & (np.abs(points) < 1000).all(axis=1)
             return points[valid] if valid.any() else None
         except:
@@ -186,28 +180,45 @@ class PointCloudThread(QThread):
         return self.ws is not None and self.ws.connected
 
 
-class PointCloudOpenGLWidget(QOpenGLWidget):
-    """OpenGL 点云渲染组件（VBO + 显示列表加速）。"""
+class PointCloudGLWidget(QOpenGLWidget):
+    """
+    OpenGL 点云渲染组件。
+
+    操控：
+    - 左键拖动：旋转视角
+    - 右键拖动：平移
+    - 滚轮：缩放
+    """
 
     def __init__(self, parent=None):
         super().__init__(parent)
         self.points = None
         self.colors = None
-        self.rotation_x = 30.0
-        self.rotation_y = -45.0
-        self.zoom = -10.0
-        self.pan_x = 0.0
-        self.pan_y = 0.0
+
+        # 相机参数
+        self.cam_yaw = -45.0    # 水平角
+        self.cam_pitch = 30.0   # 俯仰角
+        self.cam_dist = 10.0    # 距离
+        self.cam_target = [0.0, 0.0, 0.0]  # 观察目标
+
         self.last_mouse_pos = None
         self.show_axis = True
         self.point_size = 2.0
         self.max_points = 50000
+
+        # VBO
         self._vbo_pos = None
         self._vbo_col = None
         self._vbo_count = 0
         self._need_vbo_update = False
+
+        # 显示列表
         self._grid_list = 0
         self._axis_list = 0
+
+        # 启用鼠标追踪和焦点
+        self.setMouseTracking(True)
+        self.setFocusPolicy(Qt.StrongFocus)
 
     def set_points(self, points: np.ndarray):
         if len(points) > self.max_points:
@@ -234,32 +245,35 @@ class PointCloudOpenGLWidget(QOpenGLWidget):
         self.colors = colors
 
     def initializeGL(self):
-        glClearColor(0.12, 0.12, 0.15, 1.0)
+        glClearColor(0.05, 0.05, 0.08, 1.0)
         glEnable(GL_DEPTH_TEST)
         glEnable(GL_POINT_SMOOTH)
         glEnable(GL_BLEND)
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
+        glEnable(GL_FOG)
+        glFogi(GL_FOG_MODE, GL_LINEAR)
+        glFogf(GL_FOG_START, 20.0)
+        glFogf(GL_FOG_END, 80.0)
+        glFogfv(GL_FOG_COLOR, [0.05, 0.05, 0.08, 1.0])
+
         self._vbo_pos = glGenBuffers(1)
         self._vbo_col = glGenBuffers(1)
         self._build_display_lists()
 
     def _build_display_lists(self):
-        """预编译网格和坐标轴到显示列表（只执行一次）。"""
-        # 网格显示列表
+        # 网格
         self._grid_list = glGenLists(1)
         glNewList(self._grid_list, GL_COMPILE)
-        glColor4f(0.3, 0.3, 0.3, 0.5)
+        glColor4f(0.2, 0.2, 0.25, 0.6)
         glLineWidth(1.0)
         glBegin(GL_LINES)
-        for i in range(-10, 11):
-            glVertex3f(i, -10, 0)
-            glVertex3f(i, 10, 0)
-            glVertex3f(-10, i, 0)
-            glVertex3f(10, i, 0)
+        for i in range(-20, 21):
+            glVertex3f(i, -20, 0); glVertex3f(i, 20, 0)
+            glVertex3f(-20, i, 0); glVertex3f(20, i, 0)
         glEnd()
         glEndList()
 
-        # 坐标轴显示列表
+        # 坐标轴
         self._axis_list = glGenLists(1)
         glNewList(self._axis_list, GL_COMPILE)
         glLineWidth(3.0)
@@ -273,19 +287,34 @@ class PointCloudOpenGLWidget(QOpenGLWidget):
 
     def resizeGL(self, w, h):
         glViewport(0, 0, w, h)
+        self._update_projection(w, h)
+
+    def _update_projection(self, w=None, h=None):
+        if w is None:
+            w = self.width()
+        if h is None:
+            h = self.height()
         glMatrixMode(GL_PROJECTION)
         glLoadIdentity()
-        gluPerspective(45, w / max(h, 1), 0.1, 1000.0)
+        gluPerspective(60, w / max(h, 1), 0.1, 200.0)
         glMatrixMode(GL_MODELVIEW)
 
     def paintGL(self):
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
         glLoadIdentity()
-        glTranslatef(self.pan_x, self.pan_y, self.zoom)
-        glRotatef(self.rotation_x, 1, 0, 0)
-        glRotatef(self.rotation_y, 0, 1, 0)
 
-        # 使用显示列表（预编译，极快）
+        # 计算相机位置（球坐标）
+        yaw_rad = np.radians(self.cam_yaw)
+        pitch_rad = np.radians(self.cam_pitch)
+        cx = self.cam_target[0] + self.cam_dist * np.cos(pitch_rad) * np.cos(yaw_rad)
+        cy = self.cam_target[1] + self.cam_dist * np.cos(pitch_rad) * np.sin(yaw_rad)
+        cz = self.cam_target[2] + self.cam_dist * np.sin(pitch_rad)
+
+        gluLookAt(cx, cy, cz,
+                  self.cam_target[0], self.cam_target[1], self.cam_target[2],
+                  0, 0, 1)
+
+        # 绘制场景
         if self.show_axis:
             glCallList(self._axis_list)
         glCallList(self._grid_list)
@@ -309,7 +338,6 @@ class PointCloudOpenGLWidget(QOpenGLWidget):
         self._update_vbo()
         if self._vbo_count == 0:
             return
-
         glPointSize(self.point_size)
         glEnableClientState(GL_VERTEX_ARRAY)
         glBindBuffer(GL_ARRAY_BUFFER, self._vbo_pos)
@@ -330,25 +358,37 @@ class PointCloudOpenGLWidget(QOpenGLWidget):
             return
         dx = event.position().x() - self.last_mouse_pos.x()
         dy = event.position().y() - self.last_mouse_pos.y()
+
         if event.buttons() & Qt.LeftButton:
-            self.rotation_x += dy * 0.5
-            self.rotation_y += dx * 0.5
+            # 左键：旋转视角
+            self.cam_yaw -= dx * 0.3
+            self.cam_pitch += dy * 0.3
+            self.cam_pitch = max(-89, min(89, self.cam_pitch))
         elif event.buttons() & Qt.RightButton:
-            self.pan_x += dx * 0.01
-            self.pan_y -= dy * 0.01
+            # 右键：平移（在相机平面上移动）
+            yaw_rad = np.radians(self.cam_yaw)
+            right_x = -np.sin(yaw_rad)
+            right_y = np.cos(yaw_rad)
+            up_z = 1.0
+            scale = self.cam_dist * 0.002
+            self.cam_target[0] += (right_x * dx + np.cos(yaw_rad) * dy) * scale
+            self.cam_target[1] += (right_y * dx + np.sin(yaw_rad) * dy) * scale
+            self.cam_target[2] += dy * scale * 0.5
+
         self.last_mouse_pos = event.position()
         self.update()
 
     def wheelEvent(self, event):
-        self.zoom += event.angleDelta().y() * 0.01
+        delta = event.angleDelta().y()
+        self.cam_dist *= 0.9 if delta > 0 else 1.1
+        self.cam_dist = max(0.5, min(100, self.cam_dist))
         self.update()
 
     def reset_view(self):
-        self.rotation_x = 30.0
-        self.rotation_y = -45.0
-        self.zoom = -10.0
-        self.pan_x = 0.0
-        self.pan_y = 0.0
+        self.cam_yaw = -45.0
+        self.cam_pitch = 30.0
+        self.cam_dist = 10.0
+        self.cam_target = [0.0, 0.0, 0.0]
         self.update()
 
     def cleanup(self):
@@ -360,10 +400,8 @@ class PointCloudOpenGLWidget(QOpenGLWidget):
             self._vbo_col = None
         if self._grid_list:
             glDeleteLists(self._grid_list, 1)
-            self._grid_list = 0
         if self._axis_list:
             glDeleteLists(self._axis_list, 1)
-            self._axis_list = 0
 
 
 class PointCloudWidget(QWidget):
@@ -381,6 +419,7 @@ class PointCloudWidget(QWidget):
         layout.setContentsMargins(8, 8, 8, 8)
         layout.setSpacing(8)
 
+        # 连接设置
         conn_group = QGroupBox("连接设置")
         conn_layout = QHBoxLayout(conn_group)
         conn_layout.addWidget(QLabel("rosbridge:"))
@@ -398,6 +437,7 @@ class PointCloudWidget(QWidget):
         conn_layout.addWidget(self.connect_btn)
         layout.addWidget(conn_group)
 
+        # 状态栏
         ctrl = QHBoxLayout()
         self.status_label = QLabel("● 未连接")
         self.status_label.setStyleSheet("color: gray; font-weight: bold;")
@@ -423,23 +463,25 @@ class PointCloudWidget(QWidget):
         ctrl.addWidget(reset_btn)
         layout.addLayout(ctrl)
 
-        self.gl_widget = PointCloudOpenGLWidget()
+        # OpenGL
+        self.gl_widget = PointCloudGLWidget()
         self.gl_widget.setMinimumSize(400, 300)
         layout.addWidget(self.gl_widget, 1)
 
+        # 调试日志
         self.debug_toggle = QPushButton("▼ 调试日志")
         self.debug_toggle.setCheckable(True)
         self.debug_toggle.toggled.connect(lambda v: (self.debug_text.setVisible(v), self.debug_toggle.setText("▲ 调试日志" if v else "▼ 调试日志")))
         layout.addWidget(self.debug_toggle)
 
         self.debug_text = QTextEdit()
-        self.debug_text.setMaximumHeight(100)
+        self.debug_text.setMaximumHeight(80)
         self.debug_text.setReadOnly(True)
         self.debug_text.setStyleSheet("font-family: Consolas; font-size: 11px;")
         self.debug_text.hide()
         layout.addWidget(self.debug_text)
 
-        hint = QLabel("鼠标左键: 旋转 | 右键: 平移 | 滚轮: 缩放")
+        hint = QLabel("左键拖动: 旋转 | 右键拖动: 平移 | 滚轮: 缩放")
         hint.setStyleSheet("color: gray; font-size: 11px;")
         hint.setAlignment(Qt.AlignCenter)
         layout.addWidget(hint)
