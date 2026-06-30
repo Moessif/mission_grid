@@ -141,7 +141,7 @@ class RemoteServiceWidget(QWidget):
         {
             "name": "SLAM",
             "desc": "室内定位（FAST_LIO）",
-            "cmd_start": "source /opt/ros/noetic/setup.bash --extend; source /home/orangepi/tools_ws/devel/setup.bash --extend; rosrun manage_bridge_node manage_bridge_node &",
+            "cmd_start": "chmod +x /home/orangepi/tools_ws/src/manage_bridge_node/scripts/*.py 2>/dev/null; source /opt/ros/noetic/setup.bash --extend; source /home/orangepi/tools_ws/devel/setup.bash --extend; rosrun manage_bridge_node manage_bridge_node &",
             "cmd_stop": "pkill -f manage_bridge_node",
             "check": "pgrep -f manage_bridge_node",
         },
@@ -173,6 +173,7 @@ class RemoteServiceWidget(QWidget):
         self.ssh_worker = None
         self.service_checks = {}
         self.service_status = {}
+        self._starting = False  # 防止重复启动
         self.setup_ui()
 
     def setup_ui(self):
@@ -332,20 +333,25 @@ class RemoteServiceWidget(QWidget):
             self.status_label.setStyleSheet("color: red; font-weight: bold;")
 
     def start_selected(self):
+        if self._starting:
+            return
         if not self.ssh_worker or not self.ssh_worker.isRunning():
             self.log("[错误] 请先连接 SSH")
             return
 
-        for svc in self.SERVICES:
-            if self.service_checks[svc["name"]].isChecked():
-                self.log(f"启动 {svc['name']}...")
-                # 使用 nohup 和 & 让命令在后台运行
-                cmd = f"cd /home/orangepi; {svc['cmd_start']}"
-                self.ssh_worker.run_command(cmd)
-                time.sleep(0.2)
+        self._starting = True
+        try:
+            for svc in self.SERVICES:
+                if self.service_checks[svc["name"]].isChecked():
+                    self.log(f"启动 {svc['name']}...")
+                    cmd = f"cd /home/orangepi; {svc['cmd_start']}"
+                    self.ssh_worker.run_command(cmd)
+                    time.sleep(0.3)
 
-        # 延迟检查状态
-        threading.Timer(3.0, self.check_all_status).start()
+            # 延迟检查状态
+            threading.Timer(5.0, self.check_all_status).start()
+        finally:
+            self._starting = False
 
     def stop_selected(self):
         if not self.ssh_worker or not self.ssh_worker.isRunning():
@@ -362,6 +368,8 @@ class RemoteServiceWidget(QWidget):
 
     def start_all(self):
         """一键启动全部服务。"""
+        if self._starting:
+            return
         self._select_all(True)
         self.start_selected()
 
