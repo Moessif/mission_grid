@@ -25,6 +25,7 @@ env/
 # 输出文件
 mission_grid/output/
 mission_grid/log/
+mission_grid/releases/
 *.zip
 
 # 非项目文件
