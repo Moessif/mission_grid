@@ -269,23 +269,14 @@ def main():
 
 {actions_code}
 
-    # 检查是否需要返回起飞点降落
+    # 路径规划已包含返回起飞点的逻辑，此处直接降落
     has_land = {has_land_action!r}
     if not has_land:
-        # 没有设置降落动作，返回起飞点降落
-        rospy.loginfo("No land action set, returning to takeoff point...")
-        takeoff_gx, takeoff_gy = {takeoff_gx}, {takeoff_gy}
-        takeoff_mx = origin_x + takeoff_gy * math.cos(init_yaw) - takeoff_gx * math.sin(init_yaw)
-        takeoff_my = origin_y + takeoff_gy * math.sin(init_yaw) + takeoff_gx * math.cos(init_yaw)
-        uav.set_point(takeoff_mx, takeoff_my, {config.flight_altitude})
-        while not uav.get_state(takeoff_mx, takeoff_my, {config.flight_altitude}):
-            rospy.sleep(0.2)
-        rospy.sleep(1.0)
-        rospy.loginfo("Mission complete, landing...")
-        uav.uav_land()
-        rospy.sleep(5.0)
+        rospy.loginfo("Mission complete, landing at current position...")
     else:
         rospy.loginfo("Mission complete (land action already executed)")
+    uav.uav_land()
+    rospy.sleep(5.0)
 
 
 if __name__ == "__main__":

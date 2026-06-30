@@ -470,7 +470,10 @@ def _solve_tsp_multistart(dm: np.ndarray, open_path: bool = False, attempts: int
     if n <= 1:
         return [0]
     if n == 2:
-        return [0, 1]
+        if open_path:
+            return [0, 1]
+        else:
+            return [0, 1, 0]
 
     # 小规模精确求解
     if n <= 12:
