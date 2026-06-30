@@ -1,14 +1,14 @@
 """
-3D 点云可视化模块（moderngl 加速版）
-====================================
+3D 点云可视化模块
+================
 
-使用 moderngl 实现高性能点云渲染，目标 60 FPS。
+使用 PyOpenGL + VBO 实现高性能点云渲染。
 
-关键优化：
-- moderngl 替代 PyOpenGL（更高效的 Python OpenGL 绑定）
-- GLSL 着色器实现 GPU 端颜色计算
-- 接收端丢帧，只渲染最新帧
-- VBO 只在数据变化时更新
+操控：
+- 左键拖动：旋转视角
+- 右键拖动：平移
+- 滚轮：缩放
+- F 键：切换第一人称模式
 """
 
 from __future__ import annotations
@@ -26,52 +26,9 @@ from PySide6.QtWidgets import (
     QComboBox
 )
 from PySide6.QtOpenGLWidgets import QOpenGLWidget
-from PySide6.QtGui import QCursor, QSurfaceFormat
-import moderngl
-
-
-# 顶点着色器
-VERTEX_SHADER = """
-#version 330
-in vec3 in_position;
-in vec3 in_color;
-uniform mat4 mvp;
-out vec3 frag_color;
-void main() {
-    gl_Position = mvp * vec4(in_position, 1.0);
-    frag_color = in_color;
-    gl_PointSize = 2.0;
-}
-"""
-
-# 片段着色器
-FRAGMENT_SHADER = """
-#version 330
-in vec3 frag_color;
-out vec4 out_color;
-void main() {
-    out_color = vec4(frag_color, 1.0);
-}
-"""
-
-# 网格着色器
-GRID_VERTEX = """
-#version 330
-in vec3 in_position;
-uniform mat4 mvp;
-void main() {
-    gl_Position = mvp * vec4(in_position, 1.0);
-}
-"""
-
-GRID_FRAGMENT = """
-#version 330
-uniform vec4 grid_color;
-out vec4 out_color;
-void main() {
-    out_color = grid_color;
-}
-"""
+from PySide6.QtGui import QCursor
+from OpenGL.GL import *
+from OpenGL.GLU import *
 
 
 class PointCloudThread(QThread):
@@ -204,15 +161,7 @@ class PointCloudThread(QThread):
 
 
 class PointCloudGLWidget(QOpenGLWidget):
-    """
-    moderngl 点云渲染组件。
-
-    操控：
-    - 左键拖动：旋转视角
-    - 右键拖动：平移
-    - 滚轮：缩放
-    - F 键：切换第一人称模式
-    """
+    """PyOpenGL 点云渲染组件（VBO 加速）。"""
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -233,16 +182,17 @@ class PointCloudGLWidget(QOpenGLWidget):
 
         self.show_axis = True
         self.point_size = 2.0
-        self.max_points = 100000  # 提升到 10 万点
+        self.max_points = 100000
 
-        # moderngl 资源
-        self.ctx = None
-        self.point_prog = None
-        self.point_vao = None
-        self.grid_prog = None
-        self.grid_vao = None
-        self.axis_vao = None
+        # VBO IDs
+        self._vbo_pos = None
+        self._vbo_col = None
+        self._vbo_count = 0
         self._need_vbo_update = False
+
+        # 显示列表
+        self._grid_list = 0
+        self._axis_list = 0
 
         # 模式
         self.fps_mode = False
@@ -257,13 +207,6 @@ class PointCloudGLWidget(QOpenGLWidget):
 
         self.setMouseTracking(True)
         self.setFocusPolicy(Qt.StrongFocus)
-
-        # 设置 OpenGL 版本
-        fmt = QSurfaceFormat()
-        fmt.setVersion(3, 3)
-        fmt.setProfile(QSurfaceFormat.CoreProfile)
-        fmt.setDepthBufferSize(24)
-        self.setFormat(fmt)
 
     def set_points(self, points: np.ndarray):
         if len(points) > self.max_points:
@@ -343,177 +286,136 @@ class PointCloudGLWidget(QOpenGLWidget):
             self.update()
 
     def initializeGL(self):
-        self.ctx = moderngl.create_context()
-        self.ctx.enable(moderngl.DEPTH_TEST)
-        self.ctx.enable(moderngl.PROGRAM_POINT_SIZE)
+        glClearColor(0.05, 0.05, 0.08, 1.0)
+        glEnable(GL_DEPTH_TEST)
+        glEnable(GL_POINT_SMOOTH)
+        glEnable(GL_BLEND)
+        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
 
-        # 点云着色器
-        self.point_prog = self.ctx.program(
-            vertex_shader=VERTEX_SHADER,
-            fragment_shader=FRAGMENT_SHADER
-        )
+        # 雾化效果
+        glEnable(GL_FOG)
+        glFogi(GL_FOG_MODE, GL_LINEAR)
+        glFogf(GL_FOG_START, 30.0)
+        glFogf(GL_FOG_END, 100.0)
+        glFogfv(GL_FOG_COLOR, [0.05, 0.05, 0.08, 1.0])
 
-        # 网格着色器
-        self.grid_prog = self.ctx.program(
-            vertex_shader=GRID_VERTEX,
-            fragment_shader=GRID_FRAGMENT
-        )
-        self.grid_prog['grid_color'].value = (0.2, 0.2, 0.25, 0.6)
+        # 生成 VBO
+        self._vbo_pos = glGenBuffers(1)
+        self._vbo_col = glGenBuffers(1)
 
-        # 创建网格 VAO
-        self._create_grid_vao()
+        # 创建显示列表
+        self._build_display_lists()
 
-        # 创建坐标轴 VAO
-        self._create_axis_vao()
-
-    def _create_grid_vao(self):
-        """创建网格顶点数据。"""
-        vertices = []
+    def _build_display_lists(self):
+        # 网格显示列表
+        self._grid_list = glGenLists(1)
+        glNewList(self._grid_list, GL_COMPILE)
+        glColor4f(0.15, 0.15, 0.2, 0.8)
+        glLineWidth(1.0)
+        glBegin(GL_LINES)
         for i in range(-20, 21):
-            vertices.extend([i, -20, 0, i, 20, 0])
-            vertices.extend([-20, i, 0, 20, i, 0])
-        vertices = np.array(vertices, dtype='f4')
-        vbo = self.ctx.buffer(vertices.tobytes())
-        self.grid_vao = self.ctx.vertex_array(
-            self.grid_prog,
-            [(vbo, '3f', 'in_position')]
-        )
+            glVertex3f(i, -20, 0); glVertex3f(i, 20, 0)
+            glVertex3f(-20, i, 0); glVertex3f(20, i, 0)
+        glEnd()
+        glEndList()
 
-    def _create_axis_vao(self):
-        """创建坐标轴顶点数据。"""
-        vertices = np.array([
-            0, 0, 0, 2, 0, 0,  # X
-            0, 0, 0, 0, 2, 0,  # Y
-            0, 0, 0, 0, 0, 2,  # Z
-        ], dtype='f4')
-        colors = np.array([
-            1, 0, 0, 1, 0, 0,  # X 红
-            0, 1, 0, 0, 1, 0,  # Y 绿
-            0, 0, 1, 0, 0, 1,  # Z 蓝
-        ], dtype='f4')
-        vbo_pos = self.ctx.buffer(vertices.tobytes())
-        vbo_col = self.ctx.buffer(colors.tobytes())
-        self.axis_vao = self.ctx.vertex_array(
-            self.point_prog,
-            [(vbo_pos, '3f', 'in_position'),
-             (vbo_col, '3f', 'in_color')]
-        )
+        # 坐标轴显示列表
+        self._axis_list = glGenLists(1)
+        glNewList(self._axis_list, GL_COMPILE)
+        glLineWidth(3.0)
+        glBegin(GL_LINES)
+        glColor3f(1, 0, 0); glVertex3f(0, 0, 0); glVertex3f(2, 0, 0)
+        glColor3f(0, 1, 0); glVertex3f(0, 0, 0); glVertex3f(0, 2, 0)
+        glColor3f(0, 0, 1); glVertex3f(0, 0, 0); glVertex3f(0, 0, 2)
+        glEnd()
+        glLineWidth(1.0)
+        glEndList()
 
-    def _update_point_vbo(self):
-        """更新点云 VBO。"""
-        if not self._need_vbo_update or self.points is None:
-            return
+    def resizeGL(self, w, h):
+        glViewport(0, 0, w, h)
+        self._update_projection()
 
-        # 合并位置和颜色到一个交错 VBO（更快）
-        n = len(self.points)
-        interleaved = np.zeros((n, 6), dtype='f4')
-        interleaved[:, 0:3] = self.points
-        interleaved[:, 3:6] = self.colors
-
-        if self.point_vao:
-            self.point_vao.release()
-
-        vbo = self.ctx.buffer(interleaved.tobytes())
-        self.point_vao = self.ctx.vertex_array(
-            self.point_prog,
-            [(vbo, '3f 3f', 'in_position', 'in_color')]
-        )
-        self._need_vbo_update = False
+    def _update_projection(self):
+        w, h = self.width(), self.height()
+        glMatrixMode(GL_PROJECTION)
+        glLoadIdentity()
+        fov = 70 if self.fps_mode else 60
+        gluPerspective(fov, w / max(h, 1), 0.05, 200.0)
+        glMatrixMode(GL_MODELVIEW)
 
     def paintGL(self):
-        if self.ctx is None:
-            return
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
+        glLoadIdentity()
 
-        self.ctx.clear(0.05, 0.05, 0.08, 1.0)
-
-        # 计算 MVP 矩阵
-        mvp = self._compute_mvp()
-        mvp_bytes = np.array(mvp, dtype='f4').tobytes()
-
-        # 绘制网格
-        if self.grid_vao:
-            self.grid_prog['mvp'].write(mvp_bytes)
-            self.grid_vao.render(moderngl.LINES)
-
-        # 绘制坐标轴
-        if self.show_axis and self.axis_vao:
-            self.ctx.line_width = 3.0
-            self.point_prog['mvp'].write(mvp_bytes)
-            self.axis_vao.render(moderngl.LINES)
-            self.ctx.line_width = 1.0
-
-        # 绘制点云
-        self._update_point_vbo()
-        if self.point_vao and self.points is not None and len(self.points) > 0:
-            self.point_prog['mvp'].write(mvp_bytes)
-            self.point_vao.render(moderngl.POINTS)
-
-    def _compute_mvp(self) -> list:
-        """计算 Model-View-Projection 矩阵。"""
-        w, h = self.width(), self.height()
-
-        # 投影矩阵
-        fov = 70 if self.fps_mode else 60
-        aspect = w / max(h, 1)
-        near, far = 0.05, 200.0
-        f = 1.0 / np.tan(np.radians(fov) / 2)
-        proj = np.array([
-            [f/aspect, 0, 0, 0],
-            [0, f, 0, 0],
-            [0, 0, (far+near)/(near-far), -1],
-            [0, 0, 2*far*near/(near-far), 0]
-        ], dtype='f4')
-
-        # 视图矩阵
+        # 设置相机
         if self.fps_mode:
             yaw_rad = np.radians(self.fp_yaw)
             pitch_rad = np.radians(self.fp_pitch)
-            eye = self.fp_pos
-            look = [
-                eye[0] + np.cos(pitch_rad) * np.cos(yaw_rad),
-                eye[1] + np.cos(pitch_rad) * np.sin(yaw_rad),
-                eye[2] + np.sin(pitch_rad)
-            ]
+            look_x = self.fp_pos[0] + np.cos(pitch_rad) * np.cos(yaw_rad)
+            look_y = self.fp_pos[1] + np.cos(pitch_rad) * np.sin(yaw_rad)
+            look_z = self.fp_pos[2] + np.sin(pitch_rad)
+            gluLookAt(self.fp_pos[0], self.fp_pos[1], self.fp_pos[2],
+                      look_x, look_y, look_z, 0, 0, 1)
         else:
             yaw_rad = np.radians(self.orbit_yaw)
             pitch_rad = np.radians(self.orbit_pitch)
-            eye = [
-                self.orbit_target[0] + self.orbit_dist * np.cos(pitch_rad) * np.cos(yaw_rad),
-                self.orbit_target[1] + self.orbit_dist * np.cos(pitch_rad) * np.sin(yaw_rad),
-                self.orbit_target[2] + self.orbit_dist * np.sin(pitch_rad)
-            ]
-            look = self.orbit_target
+            cx = self.orbit_target[0] + self.orbit_dist * np.cos(pitch_rad) * np.cos(yaw_rad)
+            cy = self.orbit_target[1] + self.orbit_dist * np.cos(pitch_rad) * np.sin(yaw_rad)
+            cz = self.orbit_target[2] + self.orbit_dist * np.sin(pitch_rad)
+            gluLookAt(cx, cy, cz,
+                      self.orbit_target[0], self.orbit_target[1], self.orbit_target[2],
+                      0, 0, 1)
 
-        view = self._look_at(eye, look, [0, 0, 1])
+        # 绘制网格和坐标轴（显示列表，极快）
+        glCallList(self._grid_list)
+        if self.show_axis:
+            glCallList(self._axis_list)
 
-        # MVP = proj * view
-        mvp = proj @ view
-        return mvp.flatten().tolist()
+        # 绘制点云
+        if self.points is not None and len(self.points) > 0:
+            self._draw_points_vbo()
 
-    def _look_at(self, eye, target, up) -> np.ndarray:
-        """计算 look-at 视图矩阵。"""
-        eye = np.array(eye, dtype='f4')
-        target = np.array(target, dtype='f4')
-        up = np.array(up, dtype='f4')
+    def _update_vbo(self):
+        if not self._need_vbo_update:
+            return
+        n = len(self.points)
 
-        f = target - eye
-        f = f / np.linalg.norm(f)
-        s = np.cross(f, up)
-        s = s / np.linalg.norm(s)
-        u = np.cross(s, f)
+        # 位置 VBO
+        glBindBuffer(GL_ARRAY_BUFFER, self._vbo_pos)
+        glBufferData(GL_ARRAY_BUFFER, self.points.nbytes, self.points, GL_DYNAMIC_DRAW)
 
-        m = np.eye(4, dtype='f4')
-        m[0, 0:3] = s
-        m[1, 0:3] = u
-        m[2, 0:3] = -f
-        m[0, 3] = -np.dot(s, eye)
-        m[1, 3] = -np.dot(u, eye)
-        m[2, 3] = np.dot(f, eye)
-        return m
+        # 颜色 VBO
+        glBindBuffer(GL_ARRAY_BUFFER, self._vbo_col)
+        glBufferData(GL_ARRAY_BUFFER, self.colors.nbytes, self.colors, GL_DYNAMIC_DRAW)
 
-    def resizeGL(self, w, h):
-        if self.ctx:
-            self.ctx.viewport = (0, 0, w, h)
+        glBindBuffer(GL_ARRAY_BUFFER, 0)
+        self._vbo_count = n
+        self._need_vbo_update = False
+
+    def _draw_points_vbo(self):
+        self._update_vbo()
+        if self._vbo_count == 0:
+            return
+
+        glPointSize(self.point_size)
+
+        # 位置
+        glEnableClientState(GL_VERTEX_ARRAY)
+        glBindBuffer(GL_ARRAY_BUFFER, self._vbo_pos)
+        glVertexPointer(3, GL_FLOAT, 0, None)
+
+        # 颜色
+        glEnableClientState(GL_COLOR_ARRAY)
+        glBindBuffer(GL_ARRAY_BUFFER, self._vbo_col)
+        glColorPointer(3, GL_FLOAT, 0, None)
+
+        # 绘制
+        glDrawArrays(GL_POINTS, 0, self._vbo_count)
+
+        # 清理
+        glDisableClientState(GL_COLOR_ARRAY)
+        glDisableClientState(GL_VERTEX_ARRAY)
+        glBindBuffer(GL_ARRAY_BUFFER, 0)
 
     def keyPressEvent(self, event):
         if event.isAutoRepeat(): return
@@ -576,6 +478,20 @@ class PointCloudGLWidget(QOpenGLWidget):
         if self.fps_mode:
             self.toggle_fps_mode()
         self.update()
+
+    def cleanup(self):
+        if self._vbo_pos:
+            glDeleteBuffers(1, [self._vbo_pos])
+            self._vbo_pos = None
+        if self._vbo_col:
+            glDeleteBuffers(1, [self._vbo_col])
+            self._vbo_col = None
+        if self._grid_list:
+            glDeleteLists(self._grid_list, 1)
+            self._grid_list = 0
+        if self._axis_list:
+            glDeleteLists(self._axis_list, 1)
+            self._axis_list = 0
 
 
 class PointCloudWidget(QWidget):
@@ -742,4 +658,5 @@ class PointCloudWidget(QWidget):
 
     def closeEvent(self, event):
         self.disconnect_stream()
+        self.gl_widget.cleanup()
         super().closeEvent(event)
