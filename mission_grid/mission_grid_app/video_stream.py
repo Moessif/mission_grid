@@ -23,7 +23,7 @@ from __future__ import annotations
 import time
 import cv2
 import numpy as np
-from PySide6.QtCore import QThread, Signal, Qt
+from PySide6.QtCore import QThread, Signal, Qt, QTimer
 from PySide6.QtGui import QImage, QPixmap
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel,
@@ -136,7 +136,14 @@ class CameraWidget(QWidget):
         self.video_thread = None
         self.frame_count = 0
         self.last_fps_time = time.time()
+        self._auto_refresh = True  # 是否自动刷新
         self.setup_ui()
+
+        # 定时刷新定时器（每 10 秒重连一次，清除累积延迟）
+        self._refresh_timer = QTimer()
+        self._refresh_timer.setInterval(10000)  # 10 秒
+        self._refresh_timer.timeout.connect(self._auto_reconnect)
+        self._refresh_timer.start()
 
     def setup_ui(self):
         layout = QVBoxLayout(self)
@@ -233,6 +240,24 @@ class CameraWidget(QWidget):
                 font-size: 16px;
             }
         """)
+
+    def _auto_reconnect(self):
+        """定时自动重连，清除累积延迟。"""
+        if self._auto_refresh and self.video_thread and self.video_thread.is_connected():
+            url = self.url_input.text().strip()
+            if url:
+                # 断开并重新连接
+                self.disconnect_stream()
+                self.video_thread = VideoStreamThread(url)
+                self.video_thread.frame_ready.connect(self.update_frame)
+                self.video_thread.error_occurred.connect(self.handle_error)
+                self.video_thread.connection_changed.connect(self.update_connection_status)
+                self.video_thread.start()
+                self.connect_btn.setText("断开")
+                self.status_label.setText("● 刷新中...")
+                self.status_label.setStyleSheet("color: orange; font-weight: bold;")
+                self.frame_count = 0
+                self.last_fps_time = time.time()
 
     def update_frame(self, pixmap: QPixmap):
         """更新视频帧。"""
