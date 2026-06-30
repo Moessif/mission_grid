@@ -65,6 +65,7 @@ from PySide6.QtWidgets import (
     QDialog,
     QDoubleSpinBox,
     QFileDialog,
+    QGroupBox,
     QHBoxLayout,
     QHeaderView,
     QLabel,
