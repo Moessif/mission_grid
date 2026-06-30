@@ -92,6 +92,7 @@ from .telemetry import TelemetryWorker
 from .video_stream import CameraWidget
 from .point_cloud import PointCloudWidget
 from .remote_service import RemoteServiceWidget
+from .dashboard import DashboardWidget
 
 
 class MainWindow(QMainWindow):
@@ -256,14 +257,16 @@ class MainWindow(QMainWindow):
 
         self.tab_bar = QTabBar()
         self.tab_bar.setDocumentMode(True)
+        self.tab_bar.addTab("📊  仪表盘")
         self.tab_bar.addTab("📡  ROS 节点")
-        self.tab_bar.addTab("📊  数据监控")
+        self.tab_bar.addTab("📈  数据监控")
         self.tab_bar.addTab("📷  摄像头")
         self.tab_bar.addTab("🧊  3D 点云")
         self.tab_bar.addTab("🖥  远程管理")
         right_layout.addWidget(self.tab_bar)
 
         self.stack = AnimatedStackedWidget()
+        self.stack.addWidget(self._build_dashboard_tab())
         self.stack.addWidget(self._build_node_tab())
         self.stack.addWidget(self._build_data_tab())
         self.stack.addWidget(self._build_camera_tab())
@@ -274,8 +277,8 @@ class MainWindow(QMainWindow):
         self.tab_bar.currentChanged.connect(self.stack.slideToIndex)
         self.tab_bar.setCurrentIndex(0)
 
-        # Ctrl+1~5 快捷键切换标签页
-        for i in range(5):
+        # Ctrl+1~6 快捷键切换标签页
+        for i in range(6):
             QShortcut(QKeySequence(f"Ctrl+{i+1}"), self, lambda idx=i: self._switch_tab(idx))
 
         # 状态栏（连接指示灯 + 状态文本）
@@ -341,6 +344,11 @@ class MainWindow(QMainWindow):
     # ----------------------------------------------------------
     # 标签页内容构建
     # ----------------------------------------------------------
+
+    def _build_dashboard_tab(self):
+        """仪表盘标签页。"""
+        self.dashboard_widget = DashboardWidget()
+        return self.dashboard_widget
 
     def _build_node_tab(self):
         """ROS 节点监控标签页。6 个节点的状态表格，遥测更新时着色。"""
