@@ -91,6 +91,7 @@ from .code_generator import export_mission
 from .telemetry import TelemetryWorker
 from .video_stream import CameraWidget
 from .point_cloud import PointCloudWidget
+from .remote_service import RemoteServiceWidget
 
 
 class MainWindow(QMainWindow):
@@ -259,6 +260,7 @@ class MainWindow(QMainWindow):
         self.tab_bar.addTab("📊  数据监控")
         self.tab_bar.addTab("📷  摄像头")
         self.tab_bar.addTab("🧊  3D 点云")
+        self.tab_bar.addTab("🖥  远程管理")
         right_layout.addWidget(self.tab_bar)
 
         self.stack = AnimatedStackedWidget()
@@ -266,13 +268,14 @@ class MainWindow(QMainWindow):
         self.stack.addWidget(self._build_data_tab())
         self.stack.addWidget(self._build_camera_tab())
         self.stack.addWidget(self._build_lidar_tab())
+        self.stack.addWidget(self._build_remote_tab())
         right_layout.addWidget(self.stack, 1)
 
         self.tab_bar.currentChanged.connect(self.stack.slideToIndex)
         self.tab_bar.setCurrentIndex(0)
 
-        # Ctrl+1~4 快捷键切换标签页
-        for i in range(4):
+        # Ctrl+1~5 快捷键切换标签页
+        for i in range(5):
             QShortcut(QKeySequence(f"Ctrl+{i+1}"), self, lambda idx=i: self._switch_tab(idx))
 
         # 状态栏（连接指示灯 + 状态文本）
@@ -399,6 +402,11 @@ class MainWindow(QMainWindow):
         """3D 点云标签页。"""
         self.pointcloud_widget = PointCloudWidget()
         return self.pointcloud_widget
+
+    def _build_remote_tab(self):
+        """远程服务管理标签页。"""
+        self.remote_widget = RemoteServiceWidget()
+        return self.remote_widget
 
     # ==========================================================
     # 摄像头自动连接
