@@ -15,18 +15,22 @@ python app.py
 ```
 mission_grid/
 ├── app.py                      # 入口脚本（python app.py）
+├── config.json                 # 配置文件（自动生成，不提交 Git）
 ├── requirements.txt            # Python 依赖列表
 ├── README.md                   # 本文件
 ├── CHANGELOG.md                # 版本更新日志
 ├── docs/                       # 文档目录
 ├── log/                        # 运行日志目录
 ├── output/                     # 任务包输出目录
+├── releases/                   # 版本发布备份
 ├── start_all_services.sh       # OrangePi 一键启动脚本
 ├── start_rosbridge.sh          # OrangePi 点云服务脚本
 └── mission_grid_app/           # 应用主包
     ├── __init__.py             # 包初始化（空）
     ├── main.py                 # QApplication 启动入口
     ├── main_window.py          # 主窗口（集成所有模块）
+    ├── config.py               # 配置系统（IP、端口、凭据）
+    ├── network_scanner.py      # 网络扫描模块（nmap）
     ├── models.py               # 数据模型（GridConfig, CellAction）
     ├── grid_widget.py          # 网格可视化组件（QGraphicsView）
     ├── action_editor.py        # 动作编辑弹窗
