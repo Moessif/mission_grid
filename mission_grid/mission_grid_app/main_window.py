@@ -89,6 +89,7 @@ from .models import CellAction, GridConfig, COL_LABELS, ROW_LABELS
 from .path_planner import plan_path, plan_path_all
 from .code_generator import export_mission
 from .telemetry import TelemetryWorker
+from .video_stream import CameraWidget
 
 
 class MainWindow(QMainWindow):
@@ -379,20 +380,9 @@ class MainWindow(QMainWindow):
         return widget
 
     def _build_camera_tab(self):
-        """摄像头预览标签页（占位符）。需要机载 web_video_server 支持。"""
-        widget = QWidget()
-        layout = QVBoxLayout(widget)
-        layout.setContentsMargins(0, 0, 0, 0)
-        icon = QLabel("📷")
-        icon.setStyleSheet("font-size:48px;")
-        icon.setAlignment(Qt.AlignCenter)
-        layout.addWidget(icon)
-        hint = QLabel("摄像头监控\n需要机载 web_video_server 支持")
-        hint.setAlignment(Qt.AlignCenter)
-        hint.setStyleSheet(f"color:{c.on_surface_variant}; font-size:13px;")
-        layout.addWidget(hint)
-        layout.addStretch()
-        return widget
+        """摄像头预览标签页。"""
+        self.camera_widget = CameraWidget()
+        return self.camera_widget
 
     def _build_lidar_tab(self):
         """3D 点云标签页（占位符）。需要机载 rosbridge_server 支持。"""
