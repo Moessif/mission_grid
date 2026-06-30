@@ -104,6 +104,18 @@ def _generate_mission_script(config: GridConfig, waypoints: List[Dict]) -> str:
     main_cells_code = ", ".join(f"({c}, {r})" for c, r in sorted(main_cells))
     global_conditions = config.main_task_conditions
 
+    # 检查是否有降落动作
+    has_land_action = any(
+        action.get("type") == "land"
+        for wp in waypoints
+        for action in wp.get("actions", [])
+    )
+
+    # 获取起飞点坐标
+    takeoff_col = config.takeoff_col
+    takeoff_row = config.takeoff_row
+    takeoff_gx, takeoff_gy = config.grid_to_xy(takeoff_col, takeoff_row)
+
     # 统计各类动作总数（用于执行计数检查）
     action_totals: Dict[str, int] = {}
     for wp in waypoints:
@@ -257,9 +269,23 @@ def main():
 
 {actions_code}
 
-    rospy.loginfo("Mission complete, landing...")
-    uav.uav_land()
-    rospy.sleep(5.0)
+    # 检查是否需要返回起飞点降落
+    has_land = {has_land_action!r}
+    if not has_land:
+        # 没有设置降落动作，返回起飞点降落
+        rospy.loginfo("No land action set, returning to takeoff point...")
+        takeoff_gx, takeoff_gy = {takeoff_gx}, {takeoff_gy}
+        takeoff_mx = origin_x + takeoff_gy * math.cos(init_yaw) - takeoff_gx * math.sin(init_yaw)
+        takeoff_my = origin_y + takeoff_gy * math.sin(init_yaw) + takeoff_gx * math.cos(init_yaw)
+        uav.set_point(takeoff_mx, takeoff_my, {config.flight_altitude})
+        while not uav.get_state(takeoff_mx, takeoff_my, {config.flight_altitude}):
+            rospy.sleep(0.2)
+        rospy.sleep(1.0)
+        rospy.loginfo("Mission complete, landing...")
+        uav.uav_land()
+        rospy.sleep(5.0)
+    else:
+        rospy.loginfo("Mission complete (land action already executed)")
 
 
 if __name__ == "__main__":
