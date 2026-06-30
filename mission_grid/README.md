@@ -6,7 +6,7 @@
 
 ```bash
 cd mission_grid
-pip install PySide6 pymavlink python-tsp numpy
+pip install -r requirements.txt
 python app.py
 ```
 
@@ -16,8 +16,13 @@ python app.py
 mission_grid/
 ├── app.py                      # 入口脚本（python app.py）
 ├── requirements.txt            # Python 依赖列表
-├── start.bat                   # Windows 双击启动脚本
 ├── README.md                   # 本文件
+├── CHANGELOG.md                # 版本更新日志
+├── docs/                       # 文档目录
+├── log/                        # 运行日志目录
+├── output/                     # 任务包输出目录
+├── start_all_services.sh       # OrangePi 一键启动脚本
+├── start_rosbridge.sh          # OrangePi 点云服务脚本
 └── mission_grid_app/           # 应用主包
     ├── __init__.py             # 包初始化（空）
     ├── main.py                 # QApplication 启动入口
@@ -29,6 +34,11 @@ mission_grid/
     ├── path_planner.py         # 路径规划（A* + TSP + 蛇形遍历）
     ├── code_generator.py       # 任务脚本代码生成器
     ├── telemetry.py            # MAVLink UDP 遥测线程
+    ├── video_stream.py         # 摄像头视频流组件
+    ├── point_cloud.py          # 3D 点云可视化组件
+    ├── remote_service.py       # 远程服务管理组件
+    ├── dashboard.py            # 仪表盘监控组件
+    ├── logger.py               # 日志模块
     ├── material_theme.py       # Material You 3 颜色系统 + 全局 QSS
     ├── material_widgets.py     # Material 自定义组件（MCard, MChip 等）
     └── README.md               # 模块详细文档
@@ -59,6 +69,10 @@ app.py
            │    ├── path_planner.py (plan_path)
            │    └── models.py
            ├── telemetry.py (TelemetryWorker)             ← MAVLink 遥测
+           ├── video_stream.py (CameraWidget)             ← 摄像头监控
+           ├── point_cloud.py (PointCloudWidget)          ← 3D 点云
+           ├── remote_service.py (RemoteServiceWidget)    ← 远程管理
+           ├── dashboard.py (DashboardWidget)             ← 仪表盘
            ├── material_theme.py (global_stylesheet)      ← 全局样式
            └── material_widgets.py (MCard, MChip, ...)    ← 自定义组件
                 └── material_theme.py
@@ -88,6 +102,7 @@ B1  ·   ·   ·   ·   ·   ·   ·   ·   ★     row=0
 
 | 功能 | 说明 |
 |------|------|
+| 仪表盘 | 系统实时监控（CPU/内存/连接状态/性能指标） |
 | 网格编辑器 | 7×9 可视化网格，左键设置动作，右键标记禁飞区 |
 | 动作系统 | 10 种动作（起飞/拍照/二维码/YOLO/降落/航向/蜂鸣器/舵机/激光） |
 | 触发条件 | 4 种条件（每次/首次/最后/主线完成后），多条件 AND 逻辑 |
@@ -98,6 +113,37 @@ B1  ·   ·   ·   ·   ·   ·   ·   ·   ★     row=0
 | 任务导出 | Python 脚本 + Shell 启动脚本 + JSON 配置 |
 | 方案管理 | JSON 格式保存/加载完整方案 |
 | 遥测监控 | MAVLink UDP 实时位置/状态/节点信息 |
+| 摄像头监控 | HTTP MJPEG 视频流实时显示 |
+| 3D 点云 | OpenGL 渲染，支持轨道/第一人称双模式 |
+| 远程管理 | SSH 连接 OrangePi，一键启动/停止服务 |
+
+## 标签页说明
+
+| 标签页 | 功能 | 快捷键 |
+|--------|------|--------|
+| 仪表盘 | 系统监控、连接状态、性能指标 | Ctrl+1 |
+| ROS 节点 | 节点状态监控（需遥测数据） | Ctrl+2 |
+| 数据监控 | 飞行状态、位置数据（需遥测数据） | Ctrl+3 |
+| 摄像头 | HTTP MJPEG 视频流 | Ctrl+4 |
+| 3D 点云 | OpenGL 点云渲染 | Ctrl+5 |
+| 远程管理 | SSH 管理 OrangePi 服务 | Ctrl+6 |
+
+## 3D 点云操控
+
+| 模式 | 操作 |
+|------|------|
+| 轨道模式（默认） | 左键旋转、右键平移、滚轮缩放 |
+| 第一人称模式（按 F） | WASD 移动、鼠标转向、Space 上升、Shift 下降 |
+
+## 远程管理
+
+通过 SSH 连接 OrangePi，一键启动/停止 ROS 服务：
+- MAVROS（飞控通信）
+- Livox 激光雷达
+- SLAM（FAST_LIO）
+- 摄像头
+- web_video_server（HTTP 视频流）
+- rosbridge（WebSocket 点云流）
 
 ## 生成的任务包
 
@@ -112,6 +158,15 @@ mission_grid_YYYYMMDD_HHMMSS/
 
 - Python 3.10+
 - PySide6 >= 6.5
-- pymavlink >= 1.4
-- python-tsp >= 0.4（可选，用于精确 TSP 求解）
-- numpy >= 1.24
+- pymavlink >= 2.4
+- python-tsp >= 0.5
+- numpy >= 2.0
+- opencv-python >= 4.5
+- PyOpenGL >= 3.1
+- websocket-client >= 1.0
+- moderngl >= 5.10
+- psutil >= 5.9
+
+## 日志
+
+运行日志保存在 `mission_grid/log/` 目录，每次运行生成一个日志文件，文件名格式：`mission_grid_YYYYMMDD_HHMMSS.log`
