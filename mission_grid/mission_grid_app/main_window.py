@@ -785,6 +785,11 @@ class MainWindow(QMainWindow):
         self._conn_dot.setStyleSheet(f"color:#2E7D32; font-size:10px;")
         self._conn_dot.setToolTip("遥测已连接")
 
+        # 更新仪表盘
+        if hasattr(self, 'dashboard_widget'):
+            self.dashboard_widget.update_telemetry_status(True)
+            self.dashboard_widget.update_position(x, y, z)
+
     def _on_status(self, status):
         """遥测飞行状态回调。更新数据表和状态芯片。"""
         armed = "已解锁" if status.get("armed") else "未解锁"
@@ -796,6 +801,10 @@ class MainWindow(QMainWindow):
         self._telem_alive = True
         self._conn_dot.setStyleSheet(f"color:#2E7D32; font-size:10px;")
         self._conn_dot.setToolTip("遥测已连接")
+
+        # 更新仪表盘
+        if hasattr(self, 'dashboard_widget'):
+            self.dashboard_widget.update_telemetry_status(True)
 
     def _on_node_status(self, bitmask):
         """

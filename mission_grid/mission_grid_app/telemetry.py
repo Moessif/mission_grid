@@ -28,8 +28,11 @@ MAVLink 遥测模块
 from __future__ import annotations
 
 import time
+import logging
 
 from PySide6.QtCore import QThread, Signal
+
+logger = logging.getLogger(__name__)
 
 
 class TelemetryWorker(QThread):
@@ -74,9 +77,13 @@ class TelemetryWorker(QThread):
         self._running = True
         try:
             from pymavlink import mavutil
+            logger.info(f"正在监听 UDP 端口 {self.bind_port}...")
             self._mavlink_conn = mavutil.mavlink_connection(f'udp:0.0.0.0:{self.bind_port}')
+            logger.info(f"等待心跳包（5秒超时）...")
             self._mavlink_conn.wait_heartbeat(timeout=5)
-        except Exception:
+            logger.info("收到心跳包，遥测连接已建立")
+        except Exception as e:
+            logger.warning(f"遥测连接失败: {e}")
             pass  # 连接失败静默处理（可能未连接飞控）
         while self._running:
             try:
