@@ -380,46 +380,16 @@ class RemoteServiceWidget(QWidget):
                 cmd = svc['cmd_start']
                 self.ssh_worker.run_command(cmd)
 
-                # 等待服务启动（检查进程是否存在）
-                max_wait = 10
-                for wait in range(max_wait):
-                    time.sleep(1)
-                    try:
-                        if self._check_service_running(svc):
-                            self.log(f"✓ {svc['name']} 已启动")
-                            break
-                    except Exception:
-                        pass
-                else:
-                    self.log(f"⚠ {svc['name']} 启动超时，继续下一个")
+                # 等待 3 秒让服务启动（不检查进程，避免创建过多 SSH 通道）
+                time.sleep(3)
+                self.log(f"  {svc['name']} 命令已发送")
 
-                # 服务之间间隔 1 秒
-                time.sleep(1)
-
-            self.log("[完成] 所有服务启动完毕")
+            self.log("[完成] 所有服务启动命令已发送")
+            self.log("[提示] 请等待 10 秒后点击「刷新状态」检查服务")
         except Exception as e:
             self.log(f"[错误] 启动失败: {e}")
         finally:
             self._starting = False
-            try:
-                threading.Timer(2.0, self.check_all_status).start()
-            except Exception:
-                pass
-
-    def _check_service_running(self, svc):
-        """检查服务是否在运行（线程安全）。"""
-        try:
-            if not self.ssh_worker or not self.ssh_worker.client:
-                return False
-            # 使用锁保护 SSH 客户端访问
-            with self.ssh_worker._lock:
-                stdin, stdout, stderr = self.ssh_worker.client.exec_command(
-                    svc["check"], timeout=5
-                )
-                exit_code = stdout.channel.recv_exit_status()
-                return exit_code == 0
-        except Exception:
-            return False
 
     def stop_selected(self):
         if not self.ssh_worker or not self.ssh_worker.isRunning():
@@ -442,36 +412,41 @@ class RemoteServiceWidget(QWidget):
         self.start_selected()
 
     def check_all_status(self):
-        """检查所有服务状态。"""
+        """检查所有服务状态（串行执行，避免创建过多 SSH 通道）。"""
         if not self.ssh_worker or not self.ssh_worker.isRunning():
             return
 
+        # 在单个线程中串行检查所有服务
+        threading.Thread(
+            target=self._check_all_services_serial,
+            daemon=True
+        ).start()
+
+    def _check_all_services_serial(self):
+        """串行检查所有服务状态。"""
         for svc in self.SERVICES:
-            # 异步检查每个服务
-            threading.Thread(
-                target=self._check_service,
-                args=(svc,),
-                daemon=True
-            ).start()
+            try:
+                if not self.ssh_worker or not self.ssh_worker.client:
+                    break
+                stdin, stdout, stderr = self.ssh_worker.client.exec_command(
+                    svc["check"], timeout=5
+                )
+                exit_code = stdout.channel.recv_exit_status()
+                alive = exit_code == 0
 
-    def _check_service(self, svc: dict):
-        """检查单个服务状态。"""
-        try:
-            stdin, stdout, stderr = self.ssh_worker.client.exec_command(svc["check"], timeout=5)
-            exit_code = stdout.channel.recv_exit_status()
-            alive = exit_code == 0
-
-            status_widget = self.service_status[svc["name"]]
-            if alive:
-                status_widget.setText("●")
-                status_widget.setStyleSheet("color: #2E7D32; font-weight: bold;")
-                status_widget.setToolTip("运行中")
-            else:
-                status_widget.setText("●")
-                status_widget.setStyleSheet("color: gray;")
-                status_widget.setToolTip("已停止")
-        except:
-            pass
+                # 在主线程中更新 UI
+                status_widget = self.service_status[svc["name"]]
+                if alive:
+                    status_widget.setText("●")
+                    status_widget.setStyleSheet("color: #2E7D32; font-weight: bold;")
+                    status_widget.setToolTip("运行中")
+                else:
+                    status_widget.setText("●")
+                    status_widget.setStyleSheet("color: gray;")
+                    status_widget.setToolTip("已停止")
+            except Exception:
+                pass
+            time.sleep(0.5)  # 间隔 0.5 秒，避免 SSH 过载
 
     def log(self, msg: str):
         ts = time.strftime("%H:%M:%S")
