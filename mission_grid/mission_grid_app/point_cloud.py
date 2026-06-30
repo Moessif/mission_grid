@@ -1,12 +1,14 @@
 """
-3D 点云可视化模块
-================
+3D 点云可视化模块（moderngl 加速版）
+====================================
 
-双模式相机：
-- 轨道模式：左键旋转、右键平移、滚轮缩放
-- 第一人称模式：WASD 移动、鼠标转向、Space/Shift 升降
+使用 moderngl 实现高性能点云渲染，目标 60 FPS。
 
-按 Tab 切换模式。
+关键优化：
+- moderngl 替代 PyOpenGL（更高效的 Python OpenGL 绑定）
+- GLSL 着色器实现 GPU 端颜色计算
+- 接收端丢帧，只渲染最新帧
+- VBO 只在数据变化时更新
 """
 
 from __future__ import annotations
@@ -17,16 +19,59 @@ import struct
 import time
 import threading
 import numpy as np
-from PySide6.QtCore import QThread, Signal, Qt, QTimer, QEvent
+from PySide6.QtCore import QThread, Signal, Qt, QTimer
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel,
     QLineEdit, QPushButton, QGroupBox, QCheckBox, QSpinBox, QTextEdit,
     QComboBox
 )
 from PySide6.QtOpenGLWidgets import QOpenGLWidget
-from PySide6.QtGui import QCursor, QVector3D
-from OpenGL.GL import *
-from OpenGL.GLU import *
+from PySide6.QtGui import QCursor, QSurfaceFormat
+import moderngl
+
+
+# 顶点着色器
+VERTEX_SHADER = """
+#version 330
+in vec3 in_position;
+in vec3 in_color;
+uniform mat4 mvp;
+out vec3 frag_color;
+void main() {
+    gl_Position = mvp * vec4(in_position, 1.0);
+    frag_color = in_color;
+    gl_PointSize = 2.0;
+}
+"""
+
+# 片段着色器
+FRAGMENT_SHADER = """
+#version 330
+in vec3 frag_color;
+out vec4 out_color;
+void main() {
+    out_color = vec4(frag_color, 1.0);
+}
+"""
+
+# 网格着色器
+GRID_VERTEX = """
+#version 330
+in vec3 in_position;
+uniform mat4 mvp;
+void main() {
+    gl_Position = mvp * vec4(in_position, 1.0);
+}
+"""
+
+GRID_FRAGMENT = """
+#version 330
+uniform vec4 grid_color;
+out vec4 out_color;
+void main() {
+    out_color = grid_color;
+}
+"""
 
 
 class PointCloudThread(QThread):
@@ -160,11 +205,13 @@ class PointCloudThread(QThread):
 
 class PointCloudGLWidget(QOpenGLWidget):
     """
-    双模式 3D 点云渲染。
+    moderngl 点云渲染组件。
 
-    轨道模式：左键旋转、右键平移、滚轮缩放
-    第一人称：WASD 移动、鼠标转向、Space/Shift 升降
-    Tab 切换模式。
+    操控：
+    - 左键拖动：旋转视角
+    - 右键拖动：平移
+    - 滚轮：缩放
+    - F 键：切换第一人称模式
     """
 
     def __init__(self, parent=None):
@@ -179,24 +226,23 @@ class PointCloudGLWidget(QOpenGLWidget):
         self.orbit_target = [0.0, 0.0, 0.0]
 
         # 第一人称参数
-        self.fp_pos = [5.0, 5.0, 3.0]  # 位置
-        self.fp_yaw = -135.0            # 水平角
-        self.fp_pitch = 0.0             # 俯仰角
-        self.fp_speed = 5.0             # 移动速度
+        self.fp_pos = [5.0, 5.0, 3.0]
+        self.fp_yaw = -135.0
+        self.fp_pitch = 0.0
+        self.fp_speed = 5.0
 
         self.show_axis = True
         self.point_size = 2.0
-        self.max_points = 50000
+        self.max_points = 100000  # 提升到 10 万点
 
-        # VBO
-        self._vbo_pos = None
-        self._vbo_col = None
-        self._vbo_count = 0
+        # moderngl 资源
+        self.ctx = None
+        self.point_prog = None
+        self.point_vao = None
+        self.grid_prog = None
+        self.grid_vao = None
+        self.axis_vao = None
         self._need_vbo_update = False
-
-        # 显示列表
-        self._grid_list = 0
-        self._axis_list = 0
 
         # 模式
         self.fps_mode = False
@@ -205,12 +251,19 @@ class PointCloudGLWidget(QOpenGLWidget):
 
         # 移动定时器
         self._move_timer = QTimer()
-        self._move_timer.setInterval(16)  # ~60fps
+        self._move_timer.setInterval(16)
         self._move_timer.timeout.connect(self._update_movement)
         self._move_timer.start()
 
         self.setMouseTracking(True)
         self.setFocusPolicy(Qt.StrongFocus)
+
+        # 设置 OpenGL 版本
+        fmt = QSurfaceFormat()
+        fmt.setVersion(3, 3)
+        fmt.setProfile(QSurfaceFormat.CoreProfile)
+        fmt.setDepthBufferSize(24)
+        self.setFormat(fmt)
 
     def set_points(self, points: np.ndarray):
         if len(points) > self.max_points:
@@ -237,10 +290,8 @@ class PointCloudGLWidget(QOpenGLWidget):
         self.colors = colors
 
     def toggle_fps_mode(self):
-        """切换轨道/第一人称模式。"""
         self.fps_mode = not self.fps_mode
         if self.fps_mode:
-            # 从轨道模式同步位置
             yaw_rad = np.radians(self.orbit_yaw)
             pitch_rad = np.radians(self.orbit_pitch)
             self.fp_pos = [
@@ -258,17 +309,13 @@ class PointCloudGLWidget(QOpenGLWidget):
         self.update()
 
     def _update_movement(self):
-        """定时器驱动的移动更新（第一人称模式）。"""
         if not self.fps_mode or not self._keys_pressed:
             return
-
-        dt = 0.016  # ~60fps
+        dt = 0.016
         speed = self.fp_speed * dt
-
         yaw_rad = np.radians(self.fp_yaw)
         forward = [np.cos(yaw_rad), np.sin(yaw_rad), 0]
         right = [-np.sin(yaw_rad), np.cos(yaw_rad), 0]
-
         moved = False
         if Qt.Key_W in self._keys_pressed:
             self.fp_pos[0] += forward[0] * speed
@@ -292,131 +339,191 @@ class PointCloudGLWidget(QOpenGLWidget):
         if Qt.Key_Shift in self._keys_pressed:
             self.fp_pos[2] -= speed
             moved = True
-
         if moved:
             self.update()
 
     def initializeGL(self):
-        glClearColor(0.05, 0.05, 0.08, 1.0)
-        glEnable(GL_DEPTH_TEST)
-        glEnable(GL_POINT_SMOOTH)
-        glEnable(GL_BLEND)
-        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
-        glEnable(GL_FOG)
-        glFogi(GL_FOG_MODE, GL_LINEAR)
-        glFogf(GL_FOG_START, 30.0)
-        glFogf(GL_FOG_END, 100.0)
-        glFogfv(GL_FOG_COLOR, [0.05, 0.05, 0.08, 1.0])
+        self.ctx = moderngl.create_context()
+        self.ctx.enable(moderngl.DEPTH_TEST)
+        self.ctx.enable(moderngl.PROGRAM_POINT_SIZE)
 
-        self._vbo_pos = glGenBuffers(1)
-        self._vbo_col = glGenBuffers(1)
-        self._build_display_lists()
+        # 点云着色器
+        self.point_prog = self.ctx.program(
+            vertex_shader=VERTEX_SHADER,
+            fragment_shader=FRAGMENT_SHADER
+        )
 
-    def _build_display_lists(self):
-        self._grid_list = glGenLists(1)
-        glNewList(self._grid_list, GL_COMPILE)
-        glColor4f(0.15, 0.15, 0.2, 0.8)
-        glLineWidth(1.0)
-        glBegin(GL_LINES)
+        # 网格着色器
+        self.grid_prog = self.ctx.program(
+            vertex_shader=GRID_VERTEX,
+            fragment_shader=GRID_FRAGMENT
+        )
+        self.grid_prog['grid_color'].value = (0.2, 0.2, 0.25, 0.6)
+
+        # 创建网格 VAO
+        self._create_grid_vao()
+
+        # 创建坐标轴 VAO
+        self._create_axis_vao()
+
+    def _create_grid_vao(self):
+        """创建网格顶点数据。"""
+        vertices = []
         for i in range(-20, 21):
-            glVertex3f(i, -20, 0); glVertex3f(i, 20, 0)
-            glVertex3f(-20, i, 0); glVertex3f(20, i, 0)
-        glEnd()
-        glEndList()
+            vertices.extend([i, -20, 0, i, 20, 0])
+            vertices.extend([-20, i, 0, 20, i, 0])
+        vertices = np.array(vertices, dtype='f4')
+        vbo = self.ctx.buffer(vertices.tobytes())
+        self.grid_vao = self.ctx.vertex_array(
+            self.grid_prog,
+            [(vbo, '3f', 'in_position')]
+        )
 
-        self._axis_list = glGenLists(1)
-        glNewList(self._axis_list, GL_COMPILE)
-        glLineWidth(3.0)
-        glBegin(GL_LINES)
-        glColor3f(1, 0, 0); glVertex3f(0, 0, 0); glVertex3f(2, 0, 0)
-        glColor3f(0, 1, 0); glVertex3f(0, 0, 0); glVertex3f(0, 2, 0)
-        glColor3f(0, 0, 1); glVertex3f(0, 0, 0); glVertex3f(0, 0, 2)
-        glEnd()
-        glLineWidth(1.0)
-        glEndList()
+    def _create_axis_vao(self):
+        """创建坐标轴顶点数据。"""
+        vertices = np.array([
+            0, 0, 0, 2, 0, 0,  # X
+            0, 0, 0, 0, 2, 0,  # Y
+            0, 0, 0, 0, 0, 2,  # Z
+        ], dtype='f4')
+        colors = np.array([
+            1, 0, 0, 1, 0, 0,  # X 红
+            0, 1, 0, 0, 1, 0,  # Y 绿
+            0, 0, 1, 0, 0, 1,  # Z 蓝
+        ], dtype='f4')
+        vbo_pos = self.ctx.buffer(vertices.tobytes())
+        vbo_col = self.ctx.buffer(colors.tobytes())
+        self.axis_vao = self.ctx.vertex_array(
+            self.point_prog,
+            [(vbo_pos, '3f', 'in_position'),
+             (vbo_col, '3f', 'in_color')]
+        )
 
-    def resizeGL(self, w, h):
-        glViewport(0, 0, w, h)
-        self._update_projection()
-
-    def _update_projection(self):
-        w, h = self.width(), self.height()
-        glMatrixMode(GL_PROJECTION)
-        glLoadIdentity()
-        fov = 70 if self.fps_mode else 60
-        gluPerspective(fov, w / max(h, 1), 0.05, 200.0)
-        glMatrixMode(GL_MODELVIEW)
-
-    def paintGL(self):
-        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
-        glLoadIdentity()
-
-        if self.fps_mode:
-            # 第一人称相机
-            yaw_rad = np.radians(self.fp_yaw)
-            pitch_rad = np.radians(self.fp_pitch)
-            look_x = self.fp_pos[0] + np.cos(pitch_rad) * np.cos(yaw_rad)
-            look_y = self.fp_pos[1] + np.cos(pitch_rad) * np.sin(yaw_rad)
-            look_z = self.fp_pos[2] + np.sin(pitch_rad)
-            gluLookAt(self.fp_pos[0], self.fp_pos[1], self.fp_pos[2],
-                      look_x, look_y, look_z, 0, 0, 1)
-        else:
-            # 轨道相机
-            yaw_rad = np.radians(self.orbit_yaw)
-            pitch_rad = np.radians(self.orbit_pitch)
-            cx = self.orbit_target[0] + self.orbit_dist * np.cos(pitch_rad) * np.cos(yaw_rad)
-            cy = self.orbit_target[1] + self.orbit_dist * np.cos(pitch_rad) * np.sin(yaw_rad)
-            cz = self.orbit_target[2] + self.orbit_dist * np.sin(pitch_rad)
-            gluLookAt(cx, cy, cz,
-                      self.orbit_target[0], self.orbit_target[1], self.orbit_target[2],
-                      0, 0, 1)
-
-        if self.show_axis:
-            glCallList(self._axis_list)
-        glCallList(self._grid_list)
-
-        if self.points is not None and len(self.points) > 0:
-            self._draw_points_vbo()
-
-    def _update_vbo(self):
-        if not self._need_vbo_update:
+    def _update_point_vbo(self):
+        """更新点云 VBO。"""
+        if not self._need_vbo_update or self.points is None:
             return
+
+        # 合并位置和颜色到一个交错 VBO（更快）
         n = len(self.points)
-        glBindBuffer(GL_ARRAY_BUFFER, self._vbo_pos)
-        glBufferData(GL_ARRAY_BUFFER, self.points.nbytes, self.points, GL_DYNAMIC_DRAW)
-        glBindBuffer(GL_ARRAY_BUFFER, self._vbo_col)
-        glBufferData(GL_ARRAY_BUFFER, self.colors.nbytes, self.colors, GL_DYNAMIC_DRAW)
-        glBindBuffer(GL_ARRAY_BUFFER, 0)
-        self._vbo_count = n
+        interleaved = np.zeros((n, 6), dtype='f4')
+        interleaved[:, 0:3] = self.points
+        interleaved[:, 3:6] = self.colors
+
+        if self.point_vao:
+            self.point_vao.release()
+
+        vbo = self.ctx.buffer(interleaved.tobytes())
+        self.point_vao = self.ctx.vertex_array(
+            self.point_prog,
+            [(vbo, '3f 3f', 'in_position', 'in_color')]
+        )
         self._need_vbo_update = False
 
-    def _draw_points_vbo(self):
-        self._update_vbo()
-        if self._vbo_count == 0:
+    def paintGL(self):
+        if self.ctx is None:
             return
-        glPointSize(self.point_size)
-        glEnableClientState(GL_VERTEX_ARRAY)
-        glBindBuffer(GL_ARRAY_BUFFER, self._vbo_pos)
-        glVertexPointer(3, GL_FLOAT, 0, None)
-        glEnableClientState(GL_COLOR_ARRAY)
-        glBindBuffer(GL_ARRAY_BUFFER, self._vbo_col)
-        glColorPointer(3, GL_FLOAT, 0, None)
-        glDrawArrays(GL_POINTS, 0, self._vbo_count)
-        glDisableClientState(GL_COLOR_ARRAY)
-        glDisableClientState(GL_VERTEX_ARRAY)
-        glBindBuffer(GL_ARRAY_BUFFER, 0)
+
+        self.ctx.clear(0.05, 0.05, 0.08, 1.0)
+
+        # 计算 MVP 矩阵
+        mvp = self._compute_mvp()
+        mvp_bytes = np.array(mvp, dtype='f4').tobytes()
+
+        # 绘制网格
+        if self.grid_vao:
+            self.grid_prog['mvp'].write(mvp_bytes)
+            self.grid_vao.render(moderngl.LINES)
+
+        # 绘制坐标轴
+        if self.show_axis and self.axis_vao:
+            self.ctx.line_width = 3.0
+            self.point_prog['mvp'].write(mvp_bytes)
+            self.axis_vao.render(moderngl.LINES)
+            self.ctx.line_width = 1.0
+
+        # 绘制点云
+        self._update_point_vbo()
+        if self.point_vao and self.points is not None and len(self.points) > 0:
+            self.point_prog['mvp'].write(mvp_bytes)
+            self.point_vao.render(moderngl.POINTS)
+
+    def _compute_mvp(self) -> list:
+        """计算 Model-View-Projection 矩阵。"""
+        w, h = self.width(), self.height()
+
+        # 投影矩阵
+        fov = 70 if self.fps_mode else 60
+        aspect = w / max(h, 1)
+        near, far = 0.05, 200.0
+        f = 1.0 / np.tan(np.radians(fov) / 2)
+        proj = np.array([
+            [f/aspect, 0, 0, 0],
+            [0, f, 0, 0],
+            [0, 0, (far+near)/(near-far), -1],
+            [0, 0, 2*far*near/(near-far), 0]
+        ], dtype='f4')
+
+        # 视图矩阵
+        if self.fps_mode:
+            yaw_rad = np.radians(self.fp_yaw)
+            pitch_rad = np.radians(self.fp_pitch)
+            eye = self.fp_pos
+            look = [
+                eye[0] + np.cos(pitch_rad) * np.cos(yaw_rad),
+                eye[1] + np.cos(pitch_rad) * np.sin(yaw_rad),
+                eye[2] + np.sin(pitch_rad)
+            ]
+        else:
+            yaw_rad = np.radians(self.orbit_yaw)
+            pitch_rad = np.radians(self.orbit_pitch)
+            eye = [
+                self.orbit_target[0] + self.orbit_dist * np.cos(pitch_rad) * np.cos(yaw_rad),
+                self.orbit_target[1] + self.orbit_dist * np.cos(pitch_rad) * np.sin(yaw_rad),
+                self.orbit_target[2] + self.orbit_dist * np.sin(pitch_rad)
+            ]
+            look = self.orbit_target
+
+        view = self._look_at(eye, look, [0, 0, 1])
+
+        # MVP = proj * view
+        mvp = proj @ view
+        return mvp.flatten().tolist()
+
+    def _look_at(self, eye, target, up) -> np.ndarray:
+        """计算 look-at 视图矩阵。"""
+        eye = np.array(eye, dtype='f4')
+        target = np.array(target, dtype='f4')
+        up = np.array(up, dtype='f4')
+
+        f = target - eye
+        f = f / np.linalg.norm(f)
+        s = np.cross(f, up)
+        s = s / np.linalg.norm(s)
+        u = np.cross(s, f)
+
+        m = np.eye(4, dtype='f4')
+        m[0, 0:3] = s
+        m[1, 0:3] = u
+        m[2, 0:3] = -f
+        m[0, 3] = -np.dot(s, eye)
+        m[1, 3] = -np.dot(u, eye)
+        m[2, 3] = np.dot(f, eye)
+        return m
+
+    def resizeGL(self, w, h):
+        if self.ctx:
+            self.ctx.viewport = (0, 0, w, h)
 
     def keyPressEvent(self, event):
-        if event.isAutoRepeat():
-            return
+        if event.isAutoRepeat(): return
         if event.key() == Qt.Key_F:
             self.toggle_fps_mode()
             return
         self._keys_pressed.add(event.key())
 
     def keyReleaseEvent(self, event):
-        if event.isAutoRepeat():
-            return
+        if event.isAutoRepeat(): return
         self._keys_pressed.discard(event.key())
 
     def mousePressEvent(self, event):
@@ -425,7 +532,6 @@ class PointCloudGLWidget(QOpenGLWidget):
 
     def mouseMoveEvent(self, event):
         if self.fps_mode:
-            # 第一人称：鼠标控制视角
             center = self.rect().center()
             dx = event.position().x() - center.x()
             dy = event.position().y() - center.y()
@@ -436,9 +542,7 @@ class PointCloudGLWidget(QOpenGLWidget):
                 QCursor.setPos(self.mapToGlobal(center))
             self.update()
         else:
-            # 轨道模式
-            if self.last_mouse_pos is None:
-                return
+            if self.last_mouse_pos is None: return
             dx = event.position().x() - self.last_mouse_pos.x()
             dy = event.position().y() - self.last_mouse_pos.y()
             if event.buttons() & Qt.LeftButton:
@@ -472,12 +576,6 @@ class PointCloudGLWidget(QOpenGLWidget):
         if self.fps_mode:
             self.toggle_fps_mode()
         self.update()
-
-    def cleanup(self):
-        if self._vbo_pos: glDeleteBuffers(1, [self._vbo_pos])
-        if self._vbo_col: glDeleteBuffers(1, [self._vbo_col])
-        if self._grid_list: glDeleteLists(self._grid_list, 1)
-        if self._axis_list: glDeleteLists(self._axis_list, 1)
 
 
 class PointCloudWidget(QWidget):
@@ -527,7 +625,7 @@ class PointCloudWidget(QWidget):
         ctrl.addWidget(QLabel("显示上限:"))
         self.max_points_spin = QSpinBox()
         self.max_points_spin.setRange(1000, 500000)
-        self.max_points_spin.setValue(50000)
+        self.max_points_spin.setValue(100000)
         self.max_points_spin.setSingleStep(10000)
         self.max_points_spin.valueChanged.connect(lambda v: setattr(self.gl_widget, 'max_points', v))
         ctrl.addWidget(self.max_points_spin)
@@ -561,10 +659,10 @@ class PointCloudWidget(QWidget):
         self.hint_label.setAlignment(Qt.AlignCenter)
         layout.addWidget(self.hint_label)
 
-        # 监听模式切换
         self.gl_widget.installEventFilter(self)
 
     def eventFilter(self, obj, event):
+        from PySide6.QtCore import QEvent
         if obj == self.gl_widget and event.type() == QEvent.Type.KeyPress:
             if event.key() == Qt.Key_F:
                 self._update_mode_label()
@@ -644,5 +742,4 @@ class PointCloudWidget(QWidget):
 
     def closeEvent(self, event):
         self.disconnect_stream()
-        self.gl_widget.cleanup()
         super().closeEvent(event)
