@@ -370,6 +370,7 @@ class MainWindow(QMainWindow):
         self.node_table.setHorizontalHeaderLabels(["节点", "状态", "描述", "进程名", "权限"])
         self.node_table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
         self.node_table.verticalHeader().setVisible(False)
+        self.node_table.setEditTriggers(QTableWidget.NoEditTriggers)  # 只读
         nodes = [
             ("MAVROS节点", "已停止", "机载电脑与飞控通信", "mavros", "不可操作"),
             ("SLAM节点", "已停止", "提供室内定位信息", "manage_bridge_node", "可操作"),
@@ -425,6 +426,7 @@ class MainWindow(QMainWindow):
         self.data_table.setHorizontalHeaderLabels(["消息", "数据"])
         self.data_table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
         self.data_table.verticalHeader().setVisible(False)
+        self.data_table.setEditTriggers(QTableWidget.NoEditTriggers)  # 只读
         msgs = [("FLY_STATUS (#150)", "-"), ("CM_STATUS (#151)", "-"), ("POSITION_DATA (#152)", "-")]
         for i, (name, val) in enumerate(msgs):
             self.data_table.setItem(i, 0, QTableWidgetItem(name))
