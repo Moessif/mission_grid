@@ -409,7 +409,7 @@ class PointCloudGLWidget(QOpenGLWidget):
     def keyPressEvent(self, event):
         if event.isAutoRepeat():
             return
-        if event.key() == Qt.Key_Tab:
+        if event.key() == Qt.Key_F:
             self.toggle_fps_mode()
             return
         self._keys_pressed.add(event.key())
@@ -556,7 +556,7 @@ class PointCloudWidget(QWidget):
         self.debug_text.hide()
         layout.addWidget(self.debug_text)
 
-        self.hint_label = QLabel("轨道: 左键旋转 | 右键平移 | 滚轮缩放  |  Tab 切换第一人称")
+        self.hint_label = QLabel("轨道: 左键旋转 | 右键平移 | 滚轮缩放  |  按 F 切换第一人称")
         self.hint_label.setStyleSheet("color: gray; font-size: 11px;")
         self.hint_label.setAlignment(Qt.AlignCenter)
         layout.addWidget(self.hint_label)
@@ -566,17 +566,17 @@ class PointCloudWidget(QWidget):
 
     def eventFilter(self, obj, event):
         if obj == self.gl_widget and event.type() == QEvent.Type.KeyPress:
-            if event.key() == Qt.Key_Tab:
+            if event.key() == Qt.Key_F:
                 self._update_mode_label()
         return super().eventFilter(obj, event)
 
     def _update_mode_label(self):
         if self.gl_widget.fps_mode:
             self.mode_label.setText("[第一人称]")
-            self.hint_label.setText("WASD 移动 | 鼠标转向 | Space 上升 | Shift 下降 | Tab 切换")
+            self.hint_label.setText("WASD 移动 | 鼠标转向 | Space 上升 | Shift 下降 | F 切换")
         else:
             self.mode_label.setText("[轨道模式]")
-            self.hint_label.setText("轨道: 左键旋转 | 右键平移 | 滚轮缩放  |  Tab 切换第一人称")
+            self.hint_label.setText("轨道: 左键旋转 | 右键平移 | 滚轮缩放  |  按 F 切换第一人称")
 
     def toggle_connection(self):
         if self.pointcloud_thread and self.pointcloud_thread.is_connected():
