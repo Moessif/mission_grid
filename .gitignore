@@ -26,6 +26,7 @@ env/
 mission_grid/output/
 mission_grid/log/
 mission_grid/releases/
+mission_grid/config.json
 *.zip
 
 # 非项目文件

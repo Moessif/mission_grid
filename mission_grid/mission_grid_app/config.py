@@ -77,8 +77,9 @@ class AppConfig:
         return f"udp://@{{local_ip}}:{self.mavlink_port}"
 
 
-# 默认配置文件路径
-CONFIG_FILE = Path.home() / ".missiongrid" / "config.json"
+# 默认配置文件路径（应用目录下）
+_APP_DIR = Path(__file__).parent.parent  # mission_grid/
+CONFIG_FILE = _APP_DIR / "config.json"
 
 
 def load_config() -> AppConfig:
