@@ -36,7 +36,7 @@ class AppConfig:
         mavlink_port: MAVLink UDP 端口
     """
     # OrangePi 连接
-    orangepi_ip: str = "localhost"
+    orangepi_ip: str = ""  # 空表示未配置，需要扫描或手动输入
     orangepi_user: str = "orangepi"
     orangepi_pass: str = "orangepi"
 

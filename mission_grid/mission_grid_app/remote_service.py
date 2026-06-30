@@ -16,8 +16,10 @@ from PySide6.QtCore import QThread, Signal, Qt, QTimer
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel,
     QLineEdit, QPushButton, QGroupBox, QCheckBox,
-    QTextEdit
+    QTextEdit, QInputDialog
 )
+
+from .network_scanner import NetworkScanner
 
 
 class SSHWorker(QThread):
@@ -206,10 +208,18 @@ class RemoteServiceWidget(QWidget):
         conn_layout = QHBoxLayout(conn_group)
         conn_layout.addWidget(QLabel("主机:"))
         # 使用配置中的 IP，如果没有配置则使用默认值
-        default_ip = self.app_config.orangepi_ip if self.app_config else "localhost"
+        default_ip = self.app_config.orangepi_ip if self.app_config else ""
         self.host_input = QLineEdit(default_ip)
+        self.host_input.setPlaceholderText("OrangePi IP 地址")
         self.host_input.setFixedWidth(150)
         conn_layout.addWidget(self.host_input)
+
+        # 扫描按钮
+        self.scan_btn = QPushButton("🔍 扫描")
+        self.scan_btn.setToolTip("扫描局域网查找 OrangePi")
+        self.scan_btn.clicked.connect(self._start_scan)
+        conn_layout.addWidget(self.scan_btn)
+
         conn_layout.addWidget(QLabel("用户:"))
         self.user_input = QLineEdit("orangepi")
         self.user_input.setFixedWidth(100)
@@ -310,6 +320,31 @@ class RemoteServiceWidget(QWidget):
     def _select_all(self, checked: bool):
         for cb in self.service_checks.values():
             cb.setChecked(checked)
+
+    def _start_scan(self):
+        """开始扫描局域网查找 OrangePi。"""
+        self.scan_btn.setEnabled(False)
+        self.scan_btn.setText("扫描中...")
+        self.log("开始扫描局域网...")
+
+        self._scanner = NetworkScanner()
+        self._scanner.device_found.connect(self._on_device_found)
+        self._scanner.scan_progress.connect(self.log)
+        self._scanner.scan_finished.connect(self._on_scan_finished)
+        self._scanner.start()
+
+    def _on_device_found(self, ip: str, hostname: str):
+        """发现设备。"""
+        self.log(f"发现设备: {ip} ({hostname})")
+        # 如果输入框为空，自动填入第一个发现的 IP
+        if not self.host_input.text().strip():
+            self.host_input.setText(ip)
+
+    def _on_scan_finished(self):
+        """扫描完成。"""
+        self.scan_btn.setEnabled(True)
+        self.scan_btn.setText("🔍 扫描")
+        self.log("扫描完成")
 
     def toggle_connection(self):
         if self.ssh_worker and self.ssh_worker.isRunning():
