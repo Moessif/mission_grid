@@ -181,12 +181,13 @@ class RemoteServiceWidget(QWidget):
         },
     ]
 
-    def __init__(self, parent=None):
+    def __init__(self, config=None, parent=None):
         super().__init__(parent)
         self.ssh_worker = None
         self.service_checks = {}
         self.service_status = {}
         self._starting = False
+        self.app_config = config
         self.setup_ui()
 
         # 自动刷新状态定时器（每 2 秒）
@@ -204,7 +205,9 @@ class RemoteServiceWidget(QWidget):
         conn_group = QGroupBox("SSH 连接")
         conn_layout = QHBoxLayout(conn_group)
         conn_layout.addWidget(QLabel("主机:"))
-        self.host_input = QLineEdit("10.209.49.217")
+        # 使用配置中的 IP，如果没有配置则使用默认值
+        default_ip = self.app_config.orangepi_ip if self.app_config else "localhost"
+        self.host_input = QLineEdit(default_ip)
         self.host_input.setFixedWidth(150)
         conn_layout.addWidget(self.host_input)
         conn_layout.addWidget(QLabel("用户:"))

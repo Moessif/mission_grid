@@ -497,11 +497,12 @@ class PointCloudGLWidget(QOpenGLWidget):
 class PointCloudWidget(QWidget):
     """3D 点云显示组件。"""
 
-    def __init__(self, parent=None):
+    def __init__(self, config=None, parent=None):
         super().__init__(parent)
         self.pointcloud_thread = None
         self.frame_count = 0
         self.last_fps_time = time.time()
+        self.app_config = config
         self.setup_ui()
 
     def setup_ui(self):
@@ -512,7 +513,9 @@ class PointCloudWidget(QWidget):
         conn_group = QGroupBox("连接设置")
         conn_layout = QHBoxLayout(conn_group)
         conn_layout.addWidget(QLabel("rosbridge:"))
-        self.url_input = QLineEdit("ws://10.209.49.217:9090")
+        # 使用配置中的 URL，如果没有配置则使用默认值
+        default_url = self.app_config.rosbridge_url if self.app_config else "ws://localhost:9090"
+        self.url_input = QLineEdit(default_url)
         conn_layout.addWidget(self.url_input)
         conn_layout.addWidget(QLabel("话题:"))
         self.topic_input = QComboBox()

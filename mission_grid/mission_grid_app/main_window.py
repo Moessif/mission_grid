@@ -94,6 +94,7 @@ from .video_stream import CameraWidget
 from .point_cloud import PointCloudWidget
 from .remote_service import RemoteServiceWidget
 from .dashboard import DashboardWidget
+from .config import AppConfig, load_config, save_config
 
 
 class MainWindow(QMainWindow):
@@ -108,6 +109,7 @@ class MainWindow(QMainWindow):
         self.setWindowTitle("MissionGrid - 网格任务编排地面站")
         self.resize(1400, 900)
         self.config = GridConfig()         # 全局网格配置
+        self.app_config = load_config()    # 应用配置（IP、端口等）
         self._current_path = []            # 当前规划路径
         self._sim_index = 0               # 模拟飞行当前步数
         self._sim_timer = QTimer()         # 模拟飞行定时器
@@ -433,17 +435,17 @@ class MainWindow(QMainWindow):
 
     def _build_camera_tab(self):
         """摄像头预览标签页。"""
-        self.camera_widget = CameraWidget()
+        self.camera_widget = CameraWidget(config=self.app_config)
         return self.camera_widget
 
     def _build_lidar_tab(self):
         """3D 点云标签页。"""
-        self.pointcloud_widget = PointCloudWidget()
+        self.pointcloud_widget = PointCloudWidget(config=self.app_config)
         return self.pointcloud_widget
 
     def _build_remote_tab(self):
         """远程服务管理标签页。"""
-        self.remote_widget = RemoteServiceWidget()
+        self.remote_widget = RemoteServiceWidget(config=self.app_config)
         return self.remote_widget
 
     # ==========================================================
@@ -849,9 +851,15 @@ class MainWindow(QMainWindow):
         self.telemetry.send_heartbeat()
 
     def closeEvent(self, event):
-        """窗口关闭：保存分割器状态、停止遥测、清除无人机标记。"""
+        """窗口关闭：保存配置、分割器状态、停止遥测、清除无人机标记。"""
+        # 保存应用配置
+        save_config(self.app_config)
+
+        # 保存 UI 状态
         settings = QSettings("MissionGrid", "MissionGrid")
         settings.setValue("splitter_sizes", self._splitter.saveState())
+
+        # 清理资源
         self.telemetry.stop()
         self.grid_widget.clear_drone_display()
         event.accept()

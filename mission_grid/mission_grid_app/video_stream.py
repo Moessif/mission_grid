@@ -131,12 +131,13 @@ class CameraWidget(QWidget):
     - 显示连接状态和帧率
     """
 
-    def __init__(self, parent=None):
+    def __init__(self, config=None, parent=None):
         super().__init__(parent)
         self.video_thread = None
         self.frame_count = 0
         self.last_fps_time = time.time()
         self._auto_refresh = True  # 是否自动刷新
+        self.app_config = config
         self.setup_ui()
 
         # 定时刷新定时器（每 10 秒重连一次，清除累积延迟）
@@ -157,7 +158,9 @@ class CameraWidget(QWidget):
         conn_layout.addWidget(QLabel("视频流地址:"))
         self.url_input = QLineEdit()
         self.url_input.setPlaceholderText("http://<ip>:8080/stream?topic=/image")
-        self.url_input.setText("http://10.209.49.217:8080/stream?topic=/image")
+        # 使用配置中的 URL，如果没有配置则使用默认值
+        default_url = self.app_config.camera_url if self.app_config else "http://localhost:8080/stream?topic=/image"
+        self.url_input.setText(default_url)
         conn_layout.addWidget(self.url_input)
 
         self.connect_btn = QPushButton("连接")
