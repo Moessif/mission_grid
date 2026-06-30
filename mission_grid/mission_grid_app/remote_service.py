@@ -20,6 +20,7 @@ from PySide6.QtWidgets import (
 )
 
 from .network_scanner import NetworkScanner
+from .config import save_config
 
 
 class SSHWorker(QThread):
@@ -361,6 +362,12 @@ class RemoteServiceWidget(QWidget):
             return
 
         self.disconnect_ssh()
+
+        # 保存 IP 到配置文件
+        if self.app_config:
+            self.app_config.orangepi_ip = host
+            self.app_config.orangepi_user = user
+            save_config(self.app_config)
 
         self.ssh_worker = SSHWorker(host, user, password)
         self.ssh_worker.output_received.connect(self.log)
