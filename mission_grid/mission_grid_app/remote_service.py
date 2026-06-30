@@ -10,6 +10,7 @@
 from __future__ import annotations
 
 import time
+import socket
 import threading
 from PySide6.QtCore import QThread, Signal, Qt
 from PySide6.QtWidgets import (
@@ -122,12 +123,24 @@ class RemoteServiceWidget(QWidget):
     - 实时显示命令输出
     """
 
+    def _get_local_ip(self):
+        """获取本机局域网 IP 地址。"""
+        try:
+            # 创建一个 UDP 连接来获取本机 IP
+            s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+            s.connect(("8.8.8.8", 80))
+            ip = s.getsockname()[0]
+            s.close()
+            return ip
+        except Exception:
+            return "127.0.0.1"
+
     # 服务定义
     SERVICES = [
         {
             "name": "MAVROS",
             "desc": "飞控通信（遥测）",
-            "cmd_start": "nohup bash -c 'source /opt/ros/noetic/setup.bash --extend; roslaunch mavros apm.launch fcu_url:=udp://:14555@192.168.144.15:14550' > /tmp/mavros.log 2>&1 &",
+            "cmd_start": "nohup bash -c 'source /opt/ros/noetic/setup.bash --extend; roslaunch mavros apm.launch fcu_url:=udp://:14555@192.168.144.15:14550 gcs_url:=udp://{local_ip}:14550' > /tmp/mavros.log 2>&1 &",
             "cmd_stop": "pkill -f mavros",
             "check": "pgrep -f mavros",
         },
@@ -361,13 +374,20 @@ class RemoteServiceWidget(QWidget):
         """串行启动服务。"""
         self._starting = True
         try:
+            # 获取本机 IP 地址
+            local_ip = self._get_local_ip()
+            self.log(f"本机 IP: {local_ip}")
+
             for i, svc in enumerate(services):
                 if not self.ssh_worker or not self.ssh_worker.isRunning():
                     self.log("[错误] SSH 连接断开")
                     break
 
                 self.log(f"[{i+1}/{len(services)}] 启动 {svc['name']}...")
-                self.ssh_worker.run_command(svc['cmd_start'])
+
+                # 替换命令中的 {local_ip} 占位符
+                cmd = svc['cmd_start'].replace('{local_ip}', local_ip)
+                self.ssh_worker.run_command(cmd)
 
                 # 等待命令执行
                 time.sleep(2)
