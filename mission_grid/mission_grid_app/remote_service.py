@@ -140,7 +140,7 @@ class RemoteServiceWidget(QWidget):
         {
             "name": "MAVROS",
             "desc": "飞控通信（遥测）",
-            "cmd_start": "nohup bash -c 'source /opt/ros/noetic/setup.bash --extend; roslaunch mavros apm.launch fcu_url:=udp://:14555@192.168.144.15:14550 gcs_url:=udp://{local_ip}:14550' > /tmp/mavros.log 2>&1 &",
+            "cmd_start": "nohup bash -c 'source /opt/ros/noetic/setup.bash --extend; roslaunch mavros apm.launch fcu_url:=udp://:14555@192.168.144.15:14550 gcs_url:=udp://@{local_ip}:14550' > /tmp/mavros.log 2>&1 &",
             "cmd_stop": "pkill -f mavros",
             "check": "pgrep -f mavros",
         },
