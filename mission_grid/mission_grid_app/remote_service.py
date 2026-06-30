@@ -78,8 +78,16 @@ class SSHWorker(QThread):
     def _execute_command(self, cmd: str):
         """执行远程命令并输出结果。"""
         try:
-            self.output_received.emit(f">>> {cmd}")
-            stdin, stdout, stderr = self.client.exec_command(cmd, timeout=30)
+            self.output_received.emit(f">>> {cmd[:80]}...")
+            # 执行命令，超时设为 10 秒
+            stdin, stdout, stderr = self.client.exec_command(cmd, timeout=10)
+
+            # 对于后台命令，立即返回
+            if '&' in cmd:
+                time.sleep(0.5)
+                self.output_received.emit("[后台命令] 已发送")
+                return
+
             exit_code = stdout.channel.recv_exit_status()
 
             # 读取输出
@@ -127,42 +135,42 @@ class RemoteServiceWidget(QWidget):
         {
             "name": "MAVROS",
             "desc": "飞控通信（遥测）",
-            "cmd_start": "source /opt/ros/noetic/setup.bash --extend; roslaunch mavros apm.launch fcu_url:=udp://:14555@192.168.144.15:14550 &",
+            "cmd_start": "nohup bash -c 'source /opt/ros/noetic/setup.bash --extend; roslaunch mavros apm.launch fcu_url:=udp://:14555@192.168.144.15:14550' > /dev/null 2>&1 &",
             "cmd_stop": "pkill -f mavros",
             "check": "pgrep -f mavros",
         },
         {
             "name": "Livox 激光雷达",
             "desc": "MID360 点云数据源",
-            "cmd_start": "source /opt/ros/noetic/setup.bash --extend; source /home/orangepi/livox_ws/devel/setup.bash --extend; roslaunch livox_ros_driver2 msg_MID360s.launch &",
+            "cmd_start": "nohup bash -c 'source /opt/ros/noetic/setup.bash --extend; source /home/orangepi/livox_ws/devel/setup.bash --extend; roslaunch livox_ros_driver2 msg_MID360s.launch' > /dev/null 2>&1 &",
             "cmd_stop": "pkill -f livox_ros_driver2",
             "check": "pgrep -f livox_ros_driver2",
         },
         {
             "name": "SLAM",
             "desc": "室内定位（FAST_LIO）",
-            "cmd_start": "chmod +x /home/orangepi/tools_ws/src/manage_bridge_node/scripts/*.py 2>/dev/null; source /opt/ros/noetic/setup.bash --extend; source /home/orangepi/tools_ws/devel/setup.bash --extend; rosrun manage_bridge_node manage_bridge_node &",
+            "cmd_start": "nohup bash -c 'source /opt/ros/noetic/setup.bash --extend; source /home/orangepi/tools_ws/devel/setup.bash --extend; rosrun manage_bridge_node manage_bridge_node' > /dev/null 2>&1 &",
             "cmd_stop": "pkill -f manage_bridge_node",
             "check": "pgrep -f manage_bridge_node",
         },
         {
             "name": "摄像头",
             "desc": "RealSense 下视摄像头",
-            "cmd_start": "source /opt/ros/noetic/setup.bash --extend; source /home/orangepi/ctrl_ws/devel/setup.bash --extend; roslaunch cam_pkg cam_pub.launch &",
+            "cmd_start": "nohup bash -c 'source /opt/ros/noetic/setup.bash --extend; source /home/orangepi/ctrl_ws/devel/setup.bash --extend; roslaunch cam_pkg cam_pub.launch' > /dev/null 2>&1 &",
             "cmd_stop": "pkill -f cam_pub",
             "check": "pgrep -f cam_pub",
         },
         {
             "name": "web_video_server",
             "desc": "摄像头 HTTP 视频流",
-            "cmd_start": "source /opt/ros/noetic/setup.bash --extend; rosrun web_video_server web_video_server &",
+            "cmd_start": "nohup bash -c 'source /opt/ros/noetic/setup.bash --extend; rosrun web_video_server web_video_server' > /dev/null 2>&1 &",
             "cmd_stop": "pkill -f web_video_server",
             "check": "pgrep -f web_video_server",
         },
         {
             "name": "rosbridge",
             "desc": "点云 WebSocket 流",
-            "cmd_start": "source /opt/ros/noetic/setup.bash --extend; roslaunch rosbridge_server rosbridge_websocket.launch &",
+            "cmd_start": "nohup bash -c 'source /opt/ros/noetic/setup.bash --extend; roslaunch rosbridge_server rosbridge_websocket.launch' > /dev/null 2>&1 &",
             "cmd_stop": "pkill -f rosbridge",
             "check": "pgrep -f rosbridge",
         },
@@ -344,9 +352,9 @@ class RemoteServiceWidget(QWidget):
             for svc in self.SERVICES:
                 if self.service_checks[svc["name"]].isChecked():
                     self.log(f"启动 {svc['name']}...")
-                    cmd = f"cd /home/orangepi; {svc['cmd_start']}"
+                    cmd = svc['cmd_start']
                     self.ssh_worker.run_command(cmd)
-                    time.sleep(0.3)
+                    time.sleep(1.0)  # 增加间隔，避免 SSH 过载
 
             # 延迟检查状态
             threading.Timer(5.0, self.check_all_status).start()
