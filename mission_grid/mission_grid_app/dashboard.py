@@ -45,6 +45,18 @@ class DashboardWidget(QWidget):
         self._timer.timeout.connect(self._update_stats)
         self._timer.start()
 
+    def _get_local_ip(self):
+        """获取本机局域网 IP 地址。"""
+        import socket
+        try:
+            s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+            s.connect(("8.8.8.8", 80))
+            ip = s.getsockname()[0]
+            s.close()
+            return ip
+        except Exception:
+            return "127.0.0.1"
+
     def setup_ui(self):
         layout = QVBoxLayout(self)
         layout.setContentsMargins(8, 8, 8, 8)
@@ -66,15 +78,27 @@ class DashboardWidget(QWidget):
         self.uptime_label.setStyleSheet("font-weight: bold;")
         sys_layout.addWidget(self.uptime_label, 0, 3)
 
+        # 本机 IP
+        sys_layout.addWidget(QLabel("本机 IP:"), 1, 0)
+        self.local_ip_label = QLabel(self._get_local_ip())
+        self.local_ip_label.setStyleSheet("font-weight: bold; color: #1565C0;")
+        sys_layout.addWidget(self.local_ip_label, 1, 1)
+
+        # OrangePi IP
+        sys_layout.addWidget(QLabel("OrangePi:"), 1, 2)
+        self.orangepi_ip_label = QLabel("10.209.49.217")
+        self.orangepi_ip_label.setStyleSheet("font-weight: bold; color: #2E7D32;")
+        sys_layout.addWidget(self.orangepi_ip_label, 1, 3)
+
         # 操作系统
-        sys_layout.addWidget(QLabel("系统:"), 1, 0)
+        sys_layout.addWidget(QLabel("系统:"), 2, 0)
         self.os_label = QLabel(f"{platform.system()} {platform.release()}")
-        sys_layout.addWidget(self.os_label, 1, 1)
+        sys_layout.addWidget(self.os_label, 2, 1)
 
         # Python 版本
-        sys_layout.addWidget(QLabel("Python:"), 1, 2)
+        sys_layout.addWidget(QLabel("Python:"), 2, 2)
         self.python_label = QLabel(platform.python_version())
-        sys_layout.addWidget(self.python_label, 1, 3)
+        sys_layout.addWidget(self.python_label, 2, 3)
 
         layout.addWidget(sys_group)
 

@@ -362,24 +362,42 @@ class MainWindow(QMainWindow):
         hint.setAlignment(Qt.AlignCenter)
         layout.addWidget(hint)
 
-        self.node_table = QTableWidget(6, 4)
-        self.node_table.setHorizontalHeaderLabels(["节点", "状态", "描述", "权限"])
+        # 节点信息表格
+        self.node_table = QTableWidget(6, 5)
+        self.node_table.setHorizontalHeaderLabels(["节点", "状态", "描述", "进程名", "权限"])
         self.node_table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
         self.node_table.verticalHeader().setVisible(False)
         nodes = [
-            ("MAVROS节点", "已停止", "机载电脑与飞控通信", "不可操作"),
-            ("SLAM节点", "已停止", "提供室内定位信息", "可操作"),
-            ("相机节点", "已停止", "相机节点", "可操作"),
-            ("路径规划节点", "未知", "运动控制器", "暂不支持"),
-            ("定位融合节点", "已停止", "定位融合提高odom频率", "不可操作"),
-            ("硬件驱动节点", "已停止", "读取原始数据的相关节点", "不可操作"),
+            ("MAVROS节点", "已停止", "机载电脑与飞控通信", "mavros", "不可操作"),
+            ("SLAM节点", "已停止", "提供室内定位信息", "manage_bridge_node", "可操作"),
+            ("相机节点", "已停止", "RealSense 摄像头驱动", "cam_pub", "可操作"),
+            ("路径规划节点", "已停止", "ego_planner 运动控制器", "ego_planner", "暂不支持"),
+            ("定位融合节点", "已停止", "定位融合提高odom频率", "odom_fusion", "不可操作"),
+            ("硬件驱动节点", "已停止", "读取原始数据的相关节点", "hardware_driver", "不可操作"),
         ]
-        for i, (name, status, desc, perm) in enumerate(nodes):
+        for i, (name, status, desc, proc, perm) in enumerate(nodes):
             self.node_table.setItem(i, 0, QTableWidgetItem(name))
             self.node_table.setItem(i, 1, QTableWidgetItem(status))
             self.node_table.setItem(i, 2, QTableWidgetItem(desc))
-            self.node_table.setItem(i, 3, QTableWidgetItem(perm))
+            self.node_table.setItem(i, 3, QTableWidgetItem(proc))
+            self.node_table.setItem(i, 4, QTableWidgetItem(perm))
         layout.addWidget(self.node_table)
+
+        # 节点说明
+        info_group = QGroupBox("节点说明")
+        info_layout = QVBoxLayout(info_group)
+        info_text = QLabel(
+            "• MAVROS: 飞控通信桥接，转发 MAVLink 消息\n"
+            "• SLAM: FAST_LIO 室内定位，提供 /Odometry 话题\n"
+            "• 相机: RealSense 下视摄像头，发布 /image 话题\n"
+            "• 路径规划: ego_planner 运动控制器\n"
+            "• 定位融合: 提高定位频率，融合多传感器\n"
+            "• 硬件驱动: 读取传感器原始数据"
+        )
+        info_text.setStyleSheet("color: gray; font-size: 11px; padding: 8px;")
+        info_text.setWordWrap(True)
+        info_layout.addWidget(info_text)
+        layout.addWidget(info_group)
 
         return widget
 
