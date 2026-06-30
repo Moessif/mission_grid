@@ -578,10 +578,23 @@ class MainWindow(QMainWindow):
         """模拟飞行单步执行。"""
         if self._sim_index >= len(self._current_path):
             self._sim_timer.stop()
+            # 检查是否有降落动作
+            has_land = any(
+                a.action_type == "land"
+                for actions in self.config.actions.values()
+                for a in actions
+            )
+            if has_land:
+                self._path_chip.setText("模拟完成（已降落）")
+                self.status_label.setText("模拟完成（已降落）")
+            else:
+                # 显示返回起飞点降落的提示
+                self._path_chip.setText("模拟完成（返回起飞点降落）")
+                self.status_label.setText("模拟完成（返回起飞点降落）")
+                # 显示降落动作弹窗
+                self._show_landing_popup()
             self.sim_btn.setText("模拟飞行")
             self.sim_btn.setProperty("cssClass", "tonal")
-            self._path_chip.setText("模拟完成")
-            self.status_label.setText("模拟完成")
             self.style().unpolish(self.sim_btn)
             self.style().polish(self.sim_btn)
             return
@@ -595,6 +608,32 @@ class MainWindow(QMainWindow):
         if actions:
             self._show_action_popup(col, row, actions)
         self._sim_index += 1
+
+    def _show_landing_popup(self):
+        """模拟飞行完成时显示降落动作提示。"""
+        popup = QDialog(self)
+        popup.setWindowTitle("执行动作 - 降落")
+        popup.setWindowFlags(Qt.Popup | Qt.FramelessWindowHint)
+        popup.setStyleSheet(f"""
+            QDialog {{
+                background: {c.surface_container_lowest};
+                border: 2px solid {c.primary};
+                border-radius: 16px;
+                padding: 16px;
+            }}
+        """)
+        layout = QVBoxLayout(popup)
+        layout.setSpacing(6)
+        name_label = QLabel("📍 返回起飞点降落")
+        name_label.setStyleSheet(f"font-size:16px; font-weight:700; color:{c.primary};")
+        layout.addWidget(name_label)
+        action_label = QLabel("✅ 降落")
+        action_label.setStyleSheet(f"font-size:14px; color:{c.on_surface};")
+        layout.addWidget(action_label)
+        popup.setLayout(layout)
+        popup.adjustSize()
+        popup.show()
+        QTimer.singleShot(1000, popup.close)
 
     def _show_action_popup(self, col, row, actions):
         """模拟飞行时弹出动作执行提示（500ms 后自动关闭）。"""
