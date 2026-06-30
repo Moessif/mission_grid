@@ -341,25 +341,74 @@ class RemoteServiceWidget(QWidget):
             self.status_label.setStyleSheet("color: red; font-weight: bold;")
 
     def start_selected(self):
+        """串行启动选中的服务，等一个完成后再启动下一个。"""
         if self._starting:
             return
         if not self.ssh_worker or not self.ssh_worker.isRunning():
             self.log("[错误] 请先连接 SSH")
             return
 
+        # 收集需要启动的服务
+        services_to_start = []
+        for svc in self.SERVICES:
+            if self.service_checks[svc["name"]].isChecked():
+                services_to_start.append(svc)
+
+        if not services_to_start:
+            self.log("[提示] 没有选中任何服务")
+            return
+
+        # 在新线程中串行启动
+        threading.Thread(
+            target=self._start_services_serial,
+            args=(services_to_start,),
+            daemon=True
+        ).start()
+
+    def _start_services_serial(self, services):
+        """串行启动服务（在后台线程执行）。"""
         self._starting = True
         try:
-            for svc in self.SERVICES:
-                if self.service_checks[svc["name"]].isChecked():
-                    self.log(f"启动 {svc['name']}...")
-                    cmd = svc['cmd_start']
-                    self.ssh_worker.run_command(cmd)
-                    time.sleep(1.0)  # 增加间隔，避免 SSH 过载
+            for i, svc in enumerate(services):
+                self.log(f"[{i+1}/{len(services)}] 启动 {svc['name']}...")
 
-            # 延迟检查状态
-            threading.Timer(5.0, self.check_all_status).start()
+                # 执行启动命令
+                cmd = svc['cmd_start']
+                self.ssh_worker.run_command(cmd)
+
+                # 等待服务启动（检查进程是否存在）
+                max_wait = 10  # 最多等待 10 秒
+                for wait in range(max_wait):
+                    time.sleep(1)
+                    if self._check_service_running(svc):
+                        self.log(f"✓ {svc['name']} 已启动")
+                        break
+                else:
+                    self.log(f"⚠ {svc['name']} 启动超时，继续下一个")
+
+                # 服务之间间隔 1 秒
+                time.sleep(1)
+
+            self.log("[完成] 所有服务启动完毕")
+        except Exception as e:
+            self.log(f"[错误] 启动失败: {e}")
         finally:
             self._starting = False
+            # 延迟检查状态
+            threading.Timer(2.0, self.check_all_status).start()
+
+    def _check_service_running(self, svc):
+        """检查服务是否在运行。"""
+        try:
+            if not self.ssh_worker or not self.ssh_worker.client:
+                return False
+            stdin, stdout, stderr = self.ssh_worker.client.exec_command(
+                svc["check"], timeout=5
+            )
+            exit_code = stdout.channel.recv_exit_status()
+            return exit_code == 0
+        except:
+            return False
 
     def stop_selected(self):
         if not self.ssh_worker or not self.ssh_worker.isRunning():
