@@ -86,8 +86,8 @@ class DashboardWidget(QWidget):
 
         # OrangePi IP
         sys_layout.addWidget(QLabel("OrangePi:"), 1, 2)
-        self.orangepi_ip_label = QLabel("10.209.49.217")
-        self.orangepi_ip_label.setStyleSheet("font-weight: bold; color: #2E7D32;")
+        self.orangepi_ip_label = QLabel("未连接")
+        self.orangepi_ip_label.setStyleSheet("font-weight: bold; color: gray;")
         sys_layout.addWidget(self.orangepi_ip_label, 1, 3)
 
         # 操作系统
