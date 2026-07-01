@@ -38,7 +38,7 @@ from __future__ import annotations
 import heapq
 import math
 import random
-from typing import Dict, List, Optional, Tuple
+from typing import Callable, Dict, List, Optional, Tuple
 
 import numpy as np
 
@@ -52,18 +52,32 @@ from .models import GridConfig
 GridCell = Tuple[int, int]    # 网格坐标类型别名
 DIAG_DIST = math.sqrt(2)      # 对角线距离 ≈ 1.414
 INF = 999999.0                # 无穷大替代值
+BlockChecker = Callable[[int, int], bool]
 
 
 # ============================================================
 # 网格合法性与邻居查询
 # ============================================================
 
-def _is_valid(col: int, row: int, config: GridConfig) -> bool:
+def _make_block_checker(config: GridConfig, runtime: bool = False) -> BlockChecker:
+    """根据规划阶段生成阻塞判断函数。"""
+    if runtime:
+        return lambda col, row: config.is_blocked_runtime(col, row)
+    return lambda col, row: config.is_blocked_preflight(col, row)
+
+
+def _is_valid(col: int, row: int, config: GridConfig, is_blocked: Optional[BlockChecker] = None) -> bool:
     """检查网格坐标是否合法（在范围内且非禁飞区）。"""
-    return 0 <= col < config.cols and 0 <= row < config.rows and not config.is_no_fly(col, row)
+    checker = is_blocked or _make_block_checker(config, runtime=False)
+    return 0 <= col < config.cols and 0 <= row < config.rows and not checker(col, row)
 
 
-def _neighbors(col: int, row: int, config: GridConfig) -> List[Tuple[GridCell, float]]:
+def _neighbors(
+    col: int,
+    row: int,
+    config: GridConfig,
+    is_blocked: Optional[BlockChecker] = None,
+) -> List[Tuple[GridCell, float]]:
     """
     获取可达邻居格子及移动代价。
 
@@ -74,13 +88,13 @@ def _neighbors(col: int, row: int, config: GridConfig) -> List[Tuple[GridCell, f
     # 正交方向
     for dc, dr in [(0, 1), (0, -1), (1, 0), (-1, 0)]:
         nc, nr = col + dc, row + dr
-        if _is_valid(nc, nr, config):
+        if _is_valid(nc, nr, config, is_blocked):
             result.append(((nc, nr), 1.0))
     # 对角线方向（需检查两侧正交格子）
     for dc, dr in [(-1, -1), (-1, 1), (1, -1), (1, 1)]:
         nc, nr = col + dc, row + dr
-        if _is_valid(nc, nr, config):
-            if _is_valid(col + dc, row, config) and _is_valid(col, row + dr, config):
+        if _is_valid(nc, nr, config, is_blocked):
+            if _is_valid(col + dc, row, config, is_blocked) and _is_valid(col, row + dr, config, is_blocked):
                 result.append(((nc, nr), DIAG_DIST))
     return result
 
@@ -115,7 +129,12 @@ def _inconsistent_heuristic(
 # A* 搜索算法
 # ============================================================
 
-def _astar_path(start: GridCell, goal: GridCell, config: GridConfig) -> List[GridCell]:
+def _astar_path(
+    start: GridCell,
+    goal: GridCell,
+    config: GridConfig,
+    is_blocked: Optional[BlockChecker] = None,
+) -> List[GridCell]:
     """
     A* 最短路径搜索。
 
@@ -142,7 +161,7 @@ def _astar_path(start: GridCell, goal: GridCell, config: GridConfig) -> List[Gri
                 current = came_from[current]
                 path.append(current)
             return path[::-1]
-        for (nc, nr), step in _neighbors(current[0], current[1], config):
+        for (nc, nr), step in _neighbors(current[0], current[1], config, is_blocked):
             if (nc, nr) in closed:
                 continue
             tentative = g_score[current] + step
@@ -162,6 +181,7 @@ def arastar_path(
     start: GridCell,
     goal: GridCell,
     config: GridConfig,
+    runtime: bool = False,
     initial_epsilon: float = 3.0,
     final_epsilon: float = 1.0,
     epsilon_step: float = 0.5,
@@ -178,6 +198,7 @@ def arastar_path(
     """
     if start == goal:
         return [start], 0.0
+    is_blocked = _make_block_checker(config, runtime)
 
     best_path: List[GridCell] = []
     best_cost: float = INF
@@ -213,7 +234,7 @@ def arastar_path(
 
             closed.add(current)
 
-            for (nc, nr), step in _neighbors(current[0], current[1], config):
+            for (nc, nr), step in _neighbors(current[0], current[1], config, is_blocked):
                 if (nc, nr) in closed:
                     continue
                 tentative = g_score[current] + step
@@ -237,7 +258,7 @@ def arastar_path(
 
     # 回退到标准 A*
     if not best_path:
-        best_path = _astar_path(start, goal, config)
+        best_path = _astar_path(start, goal, config, is_blocked)
         if best_path:
             best_cost = sum(
                 _step_cost(best_path[i], best_path[i + 1])
@@ -256,11 +277,11 @@ def _step_cost(a: GridCell, b: GridCell) -> float:
     return float(dc + dr)
 
 
-def arastar_distance(a: GridCell, b: GridCell, config: GridConfig) -> float:
+def arastar_distance(a: GridCell, b: GridCell, config: GridConfig, runtime: bool = False) -> float:
     """计算两格子间的 ARA* 最短距离（仅返回代价，不返回路径）。"""
     if a == b:
         return 0.0
-    path, cost = arastar_path(a, b, config)
+    path, cost = arastar_path(a, b, config, runtime=runtime)
     return cost if path else INF
 
 
@@ -277,7 +298,7 @@ def _find_land_cell(config: GridConfig) -> Optional[GridCell]:
     return None
 
 
-def _build_distance_matrix(points: List[GridCell], config: GridConfig) -> np.ndarray:
+def _build_distance_matrix(points: List[GridCell], config: GridConfig, runtime: bool = False) -> np.ndarray:
     """
     构建航点间的距离矩阵。
 
@@ -287,7 +308,7 @@ def _build_distance_matrix(points: List[GridCell], config: GridConfig) -> np.nda
     dm = np.zeros((n, n), dtype=float)
     for i in range(n):
         for j in range(i + 1, n):
-            d = arastar_distance(points[i], points[j], config)
+            d = arastar_distance(points[i], points[j], config, runtime=runtime)
             dm[i][j] = d
             dm[j][i] = d
     return dm
@@ -569,7 +590,7 @@ def _solve_tsp_multistart(dm: np.ndarray, open_path: bool = False, attempts: int
 # 路径拼接
 # ============================================================
 
-def _build_path_from_order(order: List[GridCell], config: GridConfig) -> List[GridCell]:
+def _build_path_from_order(order: List[GridCell], config: GridConfig, runtime: bool = False) -> List[GridCell]:
     """
     将 TSP 访问顺序拼接为完整的网格路径。
 
@@ -578,7 +599,7 @@ def _build_path_from_order(order: List[GridCell], config: GridConfig) -> List[Gr
     """
     full_path: List[GridCell] = []
     for i in range(len(order) - 1):
-        segment, _ = arastar_path(order[i], order[i + 1], config)
+        segment, _ = arastar_path(order[i], order[i + 1], config, runtime=runtime)
         if not segment:
             return []
         if full_path:
@@ -591,7 +612,12 @@ def _build_path_from_order(order: List[GridCell], config: GridConfig) -> List[Gr
 # 公共接口：路径规划
 # ============================================================
 
-def plan_path(config: GridConfig) -> List[GridCell]:
+def plan_path(
+    config: GridConfig,
+    start: Optional[GridCell] = None,
+    runtime: bool = False,
+    targets: Optional[List[GridCell]] = None,
+) -> List[GridCell]:
     """
     规划遍历有动作格子的最优路径。
 
@@ -605,20 +631,27 @@ def plan_path(config: GridConfig) -> List[GridCell]:
     - 如果存在 "land" 降落格子，路径终点固定为该格子
     - 起飞点固定为路径起点（节点 0）
     """
-    action_cells = config.action_cells()
-    if not action_cells:
-        return []
-    start = (config.takeoff_col, config.takeoff_row)
+    start = start if start is not None else (config.takeoff_col, config.takeoff_row)
+    action_cells = list(dict.fromkeys(targets if targets is not None else config.action_cells()))
     land_cell = _find_land_cell(config)
-    end = land_cell if land_cell else start
+    default_end = (config.takeoff_col, config.takeoff_row)
+    end = land_cell if land_cell else default_end
+
+    if not _is_valid(start[0], start[1], config, _make_block_checker(config, runtime)):
+        return []
+    if not action_cells:
+        if start == end:
+            return [start]
+        segment, _ = arastar_path(start, end, config, runtime=runtime)
+        return segment
 
     # 去重并确保起降点在列表中
     all_points = list(dict.fromkeys([start] + action_cells))
-    if end != start:
+    if end not in all_points:
         all_points.append(end)
 
     n = len(all_points)
-    dm = _build_distance_matrix(all_points, config)
+    dm = _build_distance_matrix(all_points, config, runtime=runtime)
 
     # 确保 start 是节点 0（TSP 求解器从 0 开始）
     start_idx = 0
@@ -657,10 +690,15 @@ def plan_path(config: GridConfig) -> List[GridCell]:
         perm = _solve_tsp_multistart(dm, open_path=False)
 
     order = [all_points[i] for i in perm]
-    return _build_path_from_order(order, config)
+    return _build_path_from_order(order, config, runtime=runtime)
 
 
-def plan_path_all(config: GridConfig) -> List[GridCell]:
+def plan_path_all(
+    config: GridConfig,
+    start: Optional[GridCell] = None,
+    runtime: bool = False,
+    visited: Optional[set[GridCell]] = None,
+) -> List[GridCell]:
     """
     规划遍历所有非禁飞格子的路径。
 
@@ -670,31 +708,43 @@ def plan_path_all(config: GridConfig) -> List[GridCell]:
 
     如果存在 "land" 降落格子，路径终点延伸到该格子。
     """
-    start = (config.takeoff_col, config.takeoff_row)
+    start = start if start is not None else (config.takeoff_col, config.takeoff_row)
     land_cell = _find_land_cell(config)
-    end = land_cell if land_cell else start
+    default_end = (config.takeoff_col, config.takeoff_row)
+    end = land_cell if land_cell else default_end
+    is_blocked = _make_block_checker(config, runtime)
+    visited_cells = set(visited or set())
     all_cells = set()
     for col in range(config.cols):
         for row in range(config.rows):
-            if not config.is_no_fly(col, row):
+            if not is_blocked(col, row):
                 all_cells.add((col, row))
     if not all_cells or start not in all_cells:
         return []
+    remaining_cells = {cell for cell in all_cells if cell not in visited_cells}
+    remaining_cells.add(start)
+    if end in all_cells:
+        remaining_cells.add(end)
+    if not remaining_cells:
+        if start == end:
+            return [start]
+        segment, _ = arastar_path(start, end, config, runtime=runtime)
+        return segment
 
     snake = _build_snake_order(config)
-    reachable = [c for c in snake if c in all_cells]
+    reachable = [c for c in snake if c in remaining_cells]
     if start not in reachable:
         return []
 
     idx = reachable.index(start)
     # 尝试正向和反向蛇形遍历
-    path_a = _build_full_snake_path(reachable, idx, config, reverse=False)
-    path_b = _build_full_snake_path(reachable, idx, config, reverse=True)
+    path_a = _build_full_snake_path(reachable, idx, config, reverse=False, runtime=runtime)
+    path_b = _build_full_snake_path(reachable, idx, config, reverse=True, runtime=runtime)
     candidates = []
     for p in [path_a, path_b]:
         if p:
             if p[-1] != end:
-                extra, _ = arastar_path(p[-1], end, config)
+                extra, _ = arastar_path(p[-1], end, config, runtime=runtime)
                 if extra:
                     p = p + extra[1:]
             candidates.append(p)
@@ -703,13 +753,19 @@ def plan_path_all(config: GridConfig) -> List[GridCell]:
     return min(candidates, key=len)
 
 
-def _build_full_snake_path(reachable: List[GridCell], idx: int, config: GridConfig, reverse: bool) -> List[GridCell]:
+def _build_full_snake_path(
+    reachable: List[GridCell],
+    idx: int,
+    config: GridConfig,
+    reverse: bool,
+    runtime: bool = False,
+) -> List[GridCell]:
     """构建从指定索引开始的完整蛇形路径。"""
     if reverse:
         order = reachable[idx:] + reachable[:idx]
     else:
         order = [reachable[idx]] + reachable[idx - 1::-1] + reachable[idx + 1:]
-    return _build_path_from_order(order, config)
+    return _build_path_from_order(order, config, runtime=runtime)
 
 
 def _build_snake_order(config: GridConfig) -> List[GridCell]:

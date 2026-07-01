@@ -47,7 +47,16 @@ from PySide6.QtWidgets import (
 )
 
 from .material_theme import COLORS as c
-from .models import CellAction, GridConfig, COL_LABELS, ROW_LABELS
+from .models import (
+    CELL_STATE_CLEAR,
+    CELL_STATE_KNOWN_NO_FLY,
+    CELL_STATE_OBSTACLE,
+    CELL_STATE_UNKNOWN_NO_FLY,
+    CellAction,
+    GridConfig,
+    COL_LABELS,
+    ROW_LABELS,
+)
 
 
 # ============================================================
@@ -112,8 +121,16 @@ class CellItem(QGraphicsRectItem):
             return ""
         label = config.cell_label(self.col, self.row)
         parts = [label]
-        if config.is_no_fly(self.col, self.row):
-            parts.append("禁飞区")
+        if config.is_known_no_fly(self.col, self.row):
+            parts.append("已知禁飞区")
+        elif config.is_discovered_unknown_no_fly(self.col, self.row):
+            parts.append("未知禁飞区（已发现）")
+        elif config.is_unknown_no_fly(self.col, self.row):
+            parts.append("未知禁飞区（未发现）")
+        elif config.is_discovered_obstacle(self.col, self.row):
+            parts.append("障碍物（已发现）")
+        elif config.is_obstacle(self.col, self.row):
+            parts.append("障碍物（未发现）")
         actions = config.actions.get((self.col, self.row), [])
         for a in actions:
             parts.append(a.action_type)
@@ -139,7 +156,7 @@ class GridWidget(QGraphicsView):
 
     信号：
         cell_action_changed(col, row): 左键点击格子（动作编辑模式）
-        cell_nofly_changed(col, row):  右键切换禁飞区
+        cell_state_changed(col, row, state):  右键按当前标记模式修改格子状态
         waypoint_added(col, row):      手动模式下添加/移除航点
 
     内部数据：
@@ -151,7 +168,7 @@ class GridWidget(QGraphicsView):
 
     # 信号定义
     cell_action_changed = Signal(int, int)
-    cell_nofly_changed = Signal(int, int)
+    cell_state_changed = Signal(int, int, str)
     waypoint_added = Signal(int, int)
 
     def __init__(self, config: GridConfig, parent=None):
@@ -168,6 +185,7 @@ class GridWidget(QGraphicsView):
         self._cells: dict[tuple[int, int], CellItem] = {}
         self._labels: dict[tuple[int, int], QGraphicsSimpleTextItem] = {}
         self._manual_mode = False     # 手动航线编辑模式
+        self._cell_mark_mode = CELL_STATE_KNOWN_NO_FLY
         self._path_items: list = []   # 路径叠加层
         self._drone_items: list = []  # 无人机标记叠加层
 
@@ -239,10 +257,14 @@ class GridWidget(QGraphicsView):
         """
         根据格子状态设置颜色优先级：
         1. 起飞点 → 绿色
-        2. 禁飞区 → 红色半透明
-        3. 主线任务 → 橙色半透明
-        4. 有动作 → 紫色半透明
-        5. 空白 → 默认表面色
+        2. 已知禁飞区 → 深红
+        3. 已发现未知禁飞区 → 深橙
+        4. 未发现未知禁飞区 → 橙黄
+        5. 已发现障碍物 → 深青色
+        6. 未发现障碍物 → 淡蓝色
+        7. 主线任务 → 橙色半透明
+        8. 有动作 → 紫色半透明
+        9. 空白 → 默认表面色
         """
         item = self._cells.get((col, row))
         if not item:
@@ -250,9 +272,21 @@ class GridWidget(QGraphicsView):
         if col == self.config.takeoff_col and row == self.config.takeoff_row:
             color = QColor("#2E7D32")
             color.setAlpha(200)
-        elif self.config.is_no_fly(col, row):
+        elif self.config.is_known_no_fly(col, row):
             color = QColor(c.error)
-            color.setAlpha(120)
+            color.setAlpha(130)
+        elif self.config.is_discovered_unknown_no_fly(col, row):
+            color = QColor("#F4511E")
+            color.setAlpha(170)
+        elif self.config.is_unknown_no_fly(col, row):
+            color = QColor("#FFB300")
+            color.setAlpha(125)
+        elif self.config.is_discovered_obstacle(col, row):
+            color = QColor("#00796B")
+            color.setAlpha(170)
+        elif self.config.is_obstacle(col, row):
+            color = QColor("#29B6F6")
+            color.setAlpha(125)
         elif (col, row) in self.config.main_task_cells:
             color = QColor("#E65100")
             color.setAlpha(160)
@@ -301,7 +335,7 @@ class GridWidget(QGraphicsView):
             return super().mousePressEvent(event)
         if event.button() == Qt.LeftButton:
             if self._manual_mode:
-                if not self.config.is_no_fly(col, row):
+                if not self.config.is_blocked_preflight(col, row):
                     self.config.custom_waypoints.append((col, row))
                     self.waypoint_added.emit(col, row)
                     self.refresh()
@@ -315,9 +349,11 @@ class GridWidget(QGraphicsView):
                 self.refresh()
                 self.waypoint_added.emit(col, row)
             else:
-                self.config.toggle_no_fly(col, row)
+                current = self.config.get_static_cell_state(col, row)
+                next_state = CELL_STATE_CLEAR if current == self._cell_mark_mode else self._cell_mark_mode
+                self.config.set_cell_state(col, row, next_state)
                 self._update_cell_color(col, row)
-                self.cell_nofly_changed.emit(col, row)
+                self.cell_state_changed.emit(col, row, next_state)
         super().mousePressEvent(event)
 
     # ----------------------------------------------------------
@@ -338,6 +374,10 @@ class GridWidget(QGraphicsView):
     def set_manual_mode(self, enabled: bool):
         """切换手动航线编辑模式。"""
         self._manual_mode = enabled
+
+    def set_cell_mark_mode(self, mode: str):
+        """设置右键标记模式。"""
+        self._cell_mark_mode = mode
 
     # ----------------------------------------------------------
     # 无人机标记渲染（遥测 + 模拟飞行）

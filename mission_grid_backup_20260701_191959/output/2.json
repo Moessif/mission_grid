@@ -1,0 +1,38 @@
+{
+  "takeoff_col": 8,
+  "takeoff_row": 0,
+  "flight_altitude": 1.2,
+  "fence_min_x": 0.0,
+  "fence_max_x": 4.0,
+  "fence_min_y": 0.0,
+  "fence_max_y": 3.0,
+  "actions": {
+    "8,0": [
+      {
+        "type": "takeoff",
+        "params": {
+          "altitude": 1.2
+        },
+        "triggers": [
+          "first_visit"
+        ]
+      }
+    ],
+    "4,3": [
+      {
+        "type": "photo",
+        "params": {
+          "save_dir": "/home/orangepi/Desktop/captures",
+          "prefix": "photo"
+        },
+        "triggers": [
+          "first_visit"
+        ]
+      }
+    ]
+  },
+  "no_fly": [],
+  "custom_waypoints": [],
+  "main_task_cells": [],
+  "main_task_conditions": []
+}

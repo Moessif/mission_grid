@@ -19,12 +19,24 @@ mission_grid/
 ├── requirements.txt            # Python 依赖列表
 ├── README.md                   # 本文件
 ├── CHANGELOG.md                # 版本更新日志
+├── 测试指南.md                   # 任务包测试指南
 ├── docs/                       # 文档目录
 ├── log/                        # 运行日志目录
 ├── output/                     # 任务包输出目录
 ├── releases/                   # 版本发布备份
+├── start.bat                   # Windows 启动脚本
 ├── start_all_services.sh       # OrangePi 一键启动脚本
 ├── start_rosbridge.sh          # OrangePi 点云服务脚本
+├── start_camera_server.sh      # 摄像头服务器启动脚本
+├── start_camera_v2.sh          # 摄像头 V2 启动脚本
+├── compile_ros.sh              # ROS 编译脚本
+├── ssh_compile.py              # SSH 远程编译脚本
+├── fix_permissions.sh          # 权限修复脚本
+├── check_camera.py             # 摄像头检查脚本
+├── diagnose_camera.sh          # 摄像头诊断脚本
+├── quick_camera.sh             # 快速摄像头测试
+├── test_mission.py             # 任务测试脚本（不起飞）
+├── push_all.bat                # 一键推送所有更改
 └── mission_grid_app/           # 应用主包
     ├── __init__.py             # 包初始化（空）
     ├── main.py                 # QApplication 启动入口
@@ -39,7 +51,8 @@ mission_grid/
     ├── code_generator.py       # 任务脚本代码生成器
     ├── telemetry.py            # MAVLink UDP 遥测线程
     ├── video_stream.py         # 摄像头视频流组件
-    ├── point_cloud.py          # 3D 点云可视化组件
+    ├── point_cloud.py          # 3D 点云可视化组件（OpenGL）
+    ├── lidar_view.py           # 3D 点云预览（pyqtgraph.opengl）
     ├── remote_service.py       # 远程服务管理组件
     ├── dashboard.py            # 仪表盘监控组件
     ├── logger.py               # 日志模块
@@ -119,7 +132,11 @@ B1  ·   ·   ·   ·   ·   ·   ·   ·   ★     row=0
 | 遥测监控 | MAVLink UDP 实时位置/状态/节点信息 |
 | 摄像头监控 | HTTP MJPEG 视频流实时显示 |
 | 3D 点云 | OpenGL 渲染，支持轨道/第一人称双模式 |
+| 3D 点云预览 | pyqtgraph.opengl GPU 渲染，支持 rosbridge 连接 |
 | 远程管理 | SSH 连接 OrangePi，一键启动/停止服务 |
+| 任务测试 | 不起飞测试脚本，验证任务逻辑 |
+| 摄像头工具 | 摄像头检查、诊断、快速测试工具 |
+| ROS 编译 | 远程 ROS 编译和权限修复工具 |
 
 ## 标签页说明
 
@@ -174,3 +191,40 @@ mission_grid_YYYYMMDD_HHMMSS/
 ## 日志
 
 运行日志保存在 `mission_grid/log/` 目录，每次运行生成一个日志文件，文件名格式：`mission_grid_YYYYMMDD_HHMMSS.log`
+
+## 协作开发
+
+### 分支策略
+
+```
+master (稳定版本)
+├── dev/mori (mori 的开发分支)
+└── dev/xxx (其他人的开发分支)
+```
+
+### 快速开始
+
+```bash
+# 克隆仓库
+git clone https://github.com/Moessif/mission_grid.git
+cd mission_grid
+
+# 切换到你的分支
+git checkout dev/mori
+
+# 安装依赖
+pip install -r requirements.txt
+
+# 运行程序
+python app.py
+```
+
+### 开发流程
+
+1. **每天开始前**: `git pull origin dev/mori`
+2. **开发过程中**: 小步提交，频繁推送
+3. **完成功能后**: 提 PR 合并到 master
+
+### 详细指南
+
+请查看项目根目录的 `COLLABORATION_GUIDE.md` 文件。

@@ -1,0 +1,80 @@
+{
+  "takeoff_col": 8,
+  "takeoff_row": 0,
+  "flight_altitude": 1.2,
+  "fence_min_x": 0.0,
+  "fence_max_x": 4.0,
+  "fence_min_y": 0.0,
+  "fence_max_y": 3.0,
+  "actions": {
+    "3,4": [
+      {
+        "type": "photo",
+        "params": {
+          "save_dir": "/home/orangepi/Desktop/captures",
+          "prefix": "photo"
+        },
+        "triggers": [
+          "first_visit"
+        ]
+      }
+    ],
+    "8,0": [
+      {
+        "type": "takeoff",
+        "params": {
+          "altitude": 1.2
+        },
+        "triggers": [
+          "always"
+        ]
+      }
+    ],
+    "1,4": [
+      {
+        "type": "yolo_detect",
+        "params": {
+          "model_path": "/home/orangepi/ctrl_ws/src/competition_pkg/scripts/animal82.onnx",
+          "save_dir": "/home/orangepi/Desktop/yolo_results",
+          "confidence": 0.6
+        },
+        "triggers": [
+          "always"
+        ]
+      }
+    ],
+    "7,5": [
+      {
+        "type": "photo",
+        "params": {
+          "save_dir": "/home/orangepi/Desktop/captures",
+          "prefix": "photo"
+        },
+        "triggers": [
+          "always"
+        ]
+      }
+    ],
+    "2,1": [
+      {
+        "type": "photo",
+        "params": {
+          "save_dir": "/home/orangepi/Desktop/captures",
+          "prefix": "photo"
+        },
+        "triggers": [
+          "always"
+        ]
+      }
+    ]
+  },
+  "no_fly": [
+    "6,2",
+    "5,1",
+    "6,3",
+    "5,2"
+  ],
+  "custom_waypoints": [],
+  "main_task_cells": [],
+  "main_task_conditions": []
+}

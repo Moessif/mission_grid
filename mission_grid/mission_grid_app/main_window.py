@@ -62,6 +62,7 @@ from pathlib import Path
 from PySide6.QtCore import Qt, QTimer, QSettings
 from PySide6.QtGui import QFont, QColor, QAction, QShortcut, QKeySequence
 from PySide6.QtWidgets import (
+    QComboBox,
     QDialog,
     QDoubleSpinBox,
     QFileDialog,
@@ -74,6 +75,7 @@ from PySide6.QtWidgets import (
     QMessageBox,
     QPushButton,
     QSplitter,
+    QSpinBox,
     QTabBar,
     QTableWidget,
     QTableWidgetItem,
@@ -86,7 +88,16 @@ from .grid_widget import GridWidget
 from .main_task_editor import MainTaskEditorDialog
 from .material_theme import COLORS as c
 from .material_widgets import MCard, MChip, AnimatedStackedWidget, add_shadow
-from .models import CellAction, GridConfig, COL_LABELS, ROW_LABELS
+from .models import (
+    CELL_STATE_CLEAR,
+    CELL_STATE_KNOWN_NO_FLY,
+    CELL_STATE_OBSTACLE,
+    CELL_STATE_UNKNOWN_NO_FLY,
+    CellAction,
+    GridConfig,
+    COL_LABELS,
+    ROW_LABELS,
+)
 from .path_planner import plan_path, plan_path_all
 from .code_generator import export_mission
 from .telemetry import TelemetryWorker
@@ -111,9 +122,21 @@ class MainWindow(QMainWindow):
         self.config = GridConfig()         # 全局网格配置
         self.app_config = load_config()    # 应用配置（IP、端口等）
         self._current_path = []            # 当前规划路径
+        self._current_plan_mode = "action_cells"
         self._sim_index = 0               # 模拟飞行当前步数
+        self._sim_trail = []
+        self._sim_visited_cells = set()
+        self._sim_visited_actions = set()
+        self._sim_unknown_no_fly_radius = 1
+        self._sim_obstacle_radius = 1
         self._sim_timer = QTimer()         # 模拟飞行定时器
         self._sim_timer.timeout.connect(self._sim_step)
+        self._mark_mode_options = [
+            ("已知禁飞区", CELL_STATE_KNOWN_NO_FLY),
+            ("未知禁飞区", CELL_STATE_UNKNOWN_NO_FLY),
+            ("障碍物", CELL_STATE_OBSTACLE),
+            ("清除标记", CELL_STATE_CLEAR),
+        ]
         self._build_ui()
 
     # ==========================================================
@@ -229,6 +252,41 @@ class MainWindow(QMainWindow):
         clear_btn.clicked.connect(self._clear_waypoints)
         action_row.addWidget(clear_btn)
 
+        mark_label = QLabel("右键标记")
+        mark_label.setStyleSheet(f"font-weight:600; color:{c.on_surface_variant}; font-size:12px;")
+        action_row.addWidget(mark_label)
+
+        self.mark_mode_combo = QComboBox()
+        for label, state in self._mark_mode_options:
+            self.mark_mode_combo.addItem(label, state)
+        self.mark_mode_combo.currentIndexChanged.connect(self._on_mark_mode_changed)
+        self.mark_mode_combo.setCurrentIndex(0)
+        action_row.addWidget(self.mark_mode_combo)
+
+        unknown_sensor_label = QLabel("未知禁飞感知")
+        unknown_sensor_label.setStyleSheet(f"font-weight:600; color:{c.on_surface_variant}; font-size:12px;")
+        action_row.addWidget(unknown_sensor_label)
+
+        self.unknown_sensor_radius_spin = QSpinBox()
+        self.unknown_sensor_radius_spin.setRange(1, 5)
+        self.unknown_sensor_radius_spin.setValue(self._sim_unknown_no_fly_radius)
+        self.unknown_sensor_radius_spin.setFixedWidth(72)
+        self.unknown_sensor_radius_spin.setSuffix(" 格")
+        self.unknown_sensor_radius_spin.valueChanged.connect(self._on_unknown_sensor_radius_changed)
+        action_row.addWidget(self.unknown_sensor_radius_spin)
+
+        obstacle_sensor_label = QLabel("障碍物感知")
+        obstacle_sensor_label.setStyleSheet(f"font-weight:600; color:{c.on_surface_variant}; font-size:12px;")
+        action_row.addWidget(obstacle_sensor_label)
+
+        self.obstacle_sensor_radius_spin = QSpinBox()
+        self.obstacle_sensor_radius_spin.setRange(1, 5)
+        self.obstacle_sensor_radius_spin.setValue(self._sim_obstacle_radius)
+        self.obstacle_sensor_radius_spin.setFixedWidth(72)
+        self.obstacle_sensor_radius_spin.setSuffix(" 格")
+        self.obstacle_sensor_radius_spin.valueChanged.connect(self._on_obstacle_sensor_radius_changed)
+        action_row.addWidget(self.obstacle_sensor_radius_spin)
+
         action_row.addStretch()
 
         # 状态芯片
@@ -247,8 +305,9 @@ class MainWindow(QMainWindow):
         grid_card = MCard()
         self.grid_widget = GridWidget(self.config)
         self.grid_widget.cell_action_changed.connect(self._on_cell_click)
-        self.grid_widget.cell_nofly_changed.connect(self._on_nofly_changed)
+        self.grid_widget.cell_state_changed.connect(self._on_cell_state_changed)
         self.grid_widget.waypoint_added.connect(self._on_waypoint_added)
+        self.grid_widget.set_cell_mark_mode(self._current_mark_mode())
         grid_card.addWidget(self.grid_widget)
         splitter.addWidget(grid_card)
 
@@ -295,7 +354,7 @@ class MainWindow(QMainWindow):
         self._conn_dot.setStyleSheet(f"color:{c.outline}; font-size:10px;")
         self._conn_dot.setToolTip("遥测未连接")
         status_bar_layout.addWidget(self._conn_dot)
-        self.status_label = QLabel("就绪 — 左键设置动作，右键标记禁飞区")
+        self.status_label = QLabel(self._default_status_text())
         self.status_label.setStyleSheet(f"color:{c.on_surface_variant}; font-size:12px;")
         status_bar_layout.addWidget(self.status_label, 1)
         right_layout.addWidget(status_bar)
@@ -343,6 +402,32 @@ class MainWindow(QMainWindow):
         """切换标签页（快捷键触发）。"""
         self.tab_bar.setCurrentIndex(index)
         self.stack.slideToIndex(index)
+
+    def _current_mark_mode(self) -> str:
+        return self.mark_mode_combo.currentData() if hasattr(self, "mark_mode_combo") else CELL_STATE_KNOWN_NO_FLY
+
+    def _mark_mode_label(self, state: str) -> str:
+        for label, value in self._mark_mode_options:
+            if value == state:
+                return label
+        return state
+
+    def _default_status_text(self) -> str:
+        return f"就绪 - 左键设置动作，右键标记 {self._mark_mode_label(self._current_mark_mode())}"
+
+    def _cell_state_status_text(self, col: int, row: int) -> str:
+        label = self.config.cell_label(col, row)
+        if self.config.is_known_no_fly(col, row):
+            return f"{label} 已标记为已知禁飞区"
+        if self.config.is_unknown_no_fly(col, row):
+            if self.config.is_discovered_unknown_no_fly(col, row):
+                return f"{label} 是未知禁飞区，飞行中已发现"
+            return f"{label} 已标记为未知禁飞区"
+        if self.config.is_obstacle(col, row):
+            if self.config.is_discovered_obstacle(col, row):
+                return f"{label} 是障碍物，飞行中已发现"
+            return f"{label} 已标记为障碍物"
+        return f"{label} 已清除风险标记"
 
     # ----------------------------------------------------------
     # 标签页内容构建
@@ -459,6 +544,21 @@ class MainWindow(QMainWindow):
         if hasattr(self, 'camera_widget'):
             self.camera_widget.connect_stream()
 
+    def _on_mark_mode_changed(self):
+        """同步右键格子标记模式。"""
+        if hasattr(self, "grid_widget"):
+            self.grid_widget.set_cell_mark_mode(self._current_mark_mode())
+        if hasattr(self, "status_label") and (not hasattr(self, "manual_btn") or not self.manual_btn.isChecked()):
+            self.status_label.setText(self._default_status_text())
+
+    def _on_unknown_sensor_radius_changed(self, value: int):
+        """更新未知禁飞区感知半径。"""
+        self._sim_unknown_no_fly_radius = value
+
+    def _on_obstacle_sensor_radius_changed(self, value: int):
+        """更新障碍物感知半径。"""
+        self._sim_obstacle_radius = value
+
     # ==========================================================
     # 起飞点自动检测
     # ==========================================================
@@ -480,21 +580,18 @@ class MainWindow(QMainWindow):
 
     def _on_cell_click(self, col, row):
         """格子左键点击：打开动作编辑弹窗。"""
-        if self.config.is_no_fly(col, row):
+        if self.config.get_static_cell_state(col, row) != CELL_STATE_CLEAR:
+            self.status_label.setText(f"{self.config.cell_label(col, row)} 已是风险格，不能配置动作")
             return
         dialog = ActionEditorDialog(col, row, self.config, self)
         if dialog.exec() == QDialog.Accepted:
             self._update_takeoff_from_actions()
         self.grid_widget.refresh()
 
-    def _on_nofly_changed(self, col, row):
-        """禁飞区状态变化：刷新网格并显示操作反馈。"""
+    def _on_cell_state_changed(self, col, row, _state):
+        """格子风险状态变化：刷新网格并显示操作反馈。"""
         self.grid_widget.refresh()
-        label = self.config.cell_label(col, row)
-        if self.config.is_no_fly(col, row):
-            self.status_label.setText(f"{label} 已标记为禁飞区")
-        else:
-            self.status_label.setText(f"{label} 已解除禁飞")
+        self.status_label.setText(self._cell_state_status_text(col, row))
 
     def _toggle_manual_mode(self, checked):
         """切换手动航线编辑模式。"""
@@ -502,11 +599,11 @@ class MainWindow(QMainWindow):
         if checked:
             self.manual_btn.setText("退出手动模式")
             self.manual_btn.setProperty("cssClass", "checkable checked")
-            self.status_label.setText("手动模式 — 左键按顺序添加航点，右键移除")
+            self.status_label.setText("手动模式 - 左键按顺序添加航点，右键移除")
         else:
             self.manual_btn.setText("手动编辑航线")
             self.manual_btn.setProperty("cssClass", "")
-            self.status_label.setText("就绪 — 左键设置动作，右键标记禁飞区")
+            self.status_label.setText(self._default_status_text())
         self.style().unpolish(self.manual_btn)
         self.style().polish(self.manual_btn)
 
@@ -535,6 +632,31 @@ class MainWindow(QMainWindow):
         self._path_chip.setText(f"手动: {n}航点")
         self.status_label.setText(f"航点 {n}: {label}")
 
+    def _remaining_action_targets(self, current_cell: tuple[int, int]) -> list[tuple[int, int]]:
+        """返回从当前位置开始尚未完成的动作格子。"""
+        return [
+            cell for cell in self.config.action_cells()
+            if cell not in self._sim_visited_actions and cell != current_cell
+        ]
+
+    def _replan_runtime_path(self, current_cell: tuple[int, int]) -> list[tuple[int, int]]:
+        """基于飞行中已发现风险，从当前位置重新规划后续路径。"""
+        if self.config.custom_waypoints:
+            return []
+        if self._current_plan_mode == "all_cells":
+            return plan_path_all(
+                self.config,
+                start=current_cell,
+                runtime=True,
+                visited=self._sim_visited_cells,
+            )
+        return plan_path(
+            self.config,
+            start=current_cell,
+            runtime=True,
+            targets=self._remaining_action_targets(current_cell),
+        )
+
     # ==========================================================
     # 路径规划
     # ==========================================================
@@ -547,6 +669,9 @@ class MainWindow(QMainWindow):
             mode: "action_cells" 遍历有动作的格子 / "all_cells" 遍历所有格子
         """
         self._update_takeoff_from_actions()
+        self.config.reset_runtime_discovery()
+        self.grid_widget.refresh()
+        self._current_plan_mode = mode
         if self.config.custom_waypoints:
             # 手动航点模式
             path = list(self.config.custom_waypoints)
@@ -562,7 +687,7 @@ class MainWindow(QMainWindow):
                 path = plan_path(self.config)
                 mode_label = "遍历有动作的格子"
             if not path:
-                QMessageBox.warning(self, "路径规划", "无法找到有效路径。请检查禁飞区设置。")
+                QMessageBox.warning(self, "路径规划", "无法找到有效路径。请检查已知禁飞区设置。")
                 return
             self.grid_widget.draw_path(self.config, path)
             # 检查是否有降落格子
@@ -615,8 +740,12 @@ class MainWindow(QMainWindow):
             self.style().polish(self.sim_btn)
             return
         # 启动模拟
+        self.config.reset_runtime_discovery()
+        self.grid_widget.refresh()
         self._sim_index = 0
         self._sim_trail = []
+        self._sim_visited_cells = set()
+        self._sim_visited_actions = set()
         self.sim_btn.setText("停止模拟")
         self.sim_btn.setProperty("cssClass", "danger")
         self.style().unpolish(self.sim_btn)
@@ -648,15 +777,49 @@ class MainWindow(QMainWindow):
             self.style().polish(self.sim_btn)
             return
         col, row = self._current_path[self._sim_index]
+        current_cell = (col, row)
+        self._sim_visited_cells.add(current_cell)
+        if self.config.has_action(col, row):
+            self._sim_visited_actions.add(current_cell)
         self._sim_trail.append((col, row))
         self.grid_widget.set_drone_position(col, row, trail=self._sim_trail)
+        current_step = self._sim_index + 1
+        discoveries = self.config.discover_cells_with_radii(
+            col,
+            row,
+            self._sim_unknown_no_fly_radius,
+            self._sim_obstacle_radius,
+        )
+        if discoveries:
+            self.grid_widget.refresh()
+            replanned = self._replan_runtime_path(current_cell)
+            if not replanned:
+                self._sim_timer.stop()
+                self.sim_btn.setText("模拟飞行")
+                self.sim_btn.setProperty("cssClass", "tonal")
+                self.style().unpolish(self.sim_btn)
+                self.style().polish(self.sim_btn)
+                labels = "、".join(self.config.cell_label(c_, r_) for c_, r_, _ in discoveries)
+                self._path_chip.setText("重规划失败")
+                self.status_label.setText(f"发现 {labels} 后无法继续规划路径")
+                QMessageBox.warning(self, "动态重规划", f"发现新风险后无法继续规划。\n新发现: {labels}")
+                return
+            self._current_path = replanned
+            self.grid_widget.draw_path(self.config, self._current_path)
+            self._sim_index = 1
+            current_step = 1
+        else:
+            self._sim_index += 1
         label = self.config.cell_label(col, row)
-        self._path_chip.setText(f"飞行: {self._sim_index + 1}/{len(self._current_path)}")
-        self.status_label.setText(f"飞行中: {label}")
+        self._path_chip.setText(f"飞行: {current_step}/{len(self._current_path)}")
+        if discoveries:
+            labels = "、".join(self.config.cell_label(c_, r_) for c_, r_, _ in discoveries)
+            self.status_label.setText(f"飞行中: {label}，发现 {labels}，已重规划")
+        else:
+            self.status_label.setText(f"飞行中: {label}")
         actions = self.config.actions.get((col, row), [])
         if actions:
             self._show_action_popup(col, row, actions)
-        self._sim_index += 1
 
     def _show_landing_popup(self):
         """模拟飞行完成时显示降落动作提示。"""
@@ -712,6 +875,16 @@ class MainWindow(QMainWindow):
         popup.show()
         QTimer.singleShot(500, popup.close)
 
+    def _serialize_cells(self, cells):
+        return [f"{col},{row}" for col, row in cells]
+
+    def _deserialize_cells(self, items):
+        cells = set()
+        for key in items:
+            col, row = map(int, key.split(","))
+            cells.add((col, row))
+        return cells
+
     # ==========================================================
     # 方案保存/加载
     # ==========================================================
@@ -729,10 +902,14 @@ class MainWindow(QMainWindow):
             "fence_max_x": self.config.fence_max_x,
             "fence_min_y": self.config.fence_min_y,
             "fence_max_y": self.config.fence_max_y,
+            "unknown_no_fly_sensor_radius": self._sim_unknown_no_fly_radius,
+            "obstacle_sensor_radius": self._sim_obstacle_radius,
             "actions": {f"{k[0]},{k[1]}": [{"type": a.action_type, "params": a.params, "triggers": a.triggers} for a in v] for k, v in self.config.actions.items()},
-            "no_fly": [f"{c_[0]},{c_[1]}" for c_ in self.config.no_fly],
-            "custom_waypoints": [f"{c_[0]},{c_[1]}" for c_ in self.config.custom_waypoints],
-            "main_task_cells": [f"{c_[0]},{c_[1]}" for c_ in self.config.main_task_cells],
+            "known_no_fly": self._serialize_cells(self.config.known_no_fly),
+            "unknown_no_fly": self._serialize_cells(self.config.unknown_no_fly),
+            "obstacles": self._serialize_cells(self.config.obstacles),
+            "custom_waypoints": self._serialize_cells(self.config.custom_waypoints),
+            "main_task_cells": self._serialize_cells(self.config.main_task_cells),
             "main_task_conditions": list(self.config.main_task_conditions),
         }
         Path(path).write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
@@ -751,14 +928,18 @@ class MainWindow(QMainWindow):
         self.config.fence_max_x = data.get("fence_max_x", 4.0)
         self.config.fence_min_y = data.get("fence_min_y", 0.0)
         self.config.fence_max_y = data.get("fence_max_y", 3.0)
+        legacy_sensor_radius = data.get("sensor_radius", 1)
+        self._sim_unknown_no_fly_radius = data.get("unknown_no_fly_sensor_radius", legacy_sensor_radius)
+        self._sim_obstacle_radius = data.get("obstacle_sensor_radius", legacy_sensor_radius)
         self.config.actions.clear()
         for key, actions in data.get("actions", {}).items():
             col, row = map(int, key.split(","))
             self.config.actions[(col, row)] = [CellAction(a["type"], a.get("params", {}), a.get("triggers", ["always"])) for a in actions]
-        self.config.no_fly = set()
-        for key in data.get("no_fly", []):
-            col, row = map(int, key.split(","))
-            self.config.no_fly.add((col, row))
+        legacy_no_fly = self._deserialize_cells(data.get("no_fly", []))
+        self.config.known_no_fly = self._deserialize_cells(data.get("known_no_fly", [])) or legacy_no_fly
+        self.config.unknown_no_fly = self._deserialize_cells(data.get("unknown_no_fly", []))
+        self.config.obstacles = self._deserialize_cells(data.get("obstacles", []))
+        self.config.reset_runtime_discovery()
         self.config.custom_waypoints = []
         for key in data.get("custom_waypoints", []):
             col, row = map(int, key.split(","))
@@ -768,8 +949,17 @@ class MainWindow(QMainWindow):
             col, row = map(int, key.split(","))
             self.config.main_task_cells.add((col, row))
         self.config.main_task_conditions = list(data.get("main_task_conditions", []))
+        self.alt_spin.setValue(self.config.flight_altitude)
+        self._fence_min_x_spin.setValue(self.config.fence_min_x)
+        self._fence_max_x_spin.setValue(self.config.fence_max_x)
+        self._fence_min_y_spin.setValue(self.config.fence_min_y)
+        self._fence_max_y_spin.setValue(self.config.fence_max_y)
+        self.unknown_sensor_radius_spin.setValue(self._sim_unknown_no_fly_radius)
+        self.obstacle_sensor_radius_spin.setValue(self._sim_obstacle_radius)
         self._update_takeoff_from_actions()
         self.grid_widget.refresh()
+        self.grid_widget.clear_overlay()
+        self._current_path = []
         self._path_chip.setText("已加载")
         self.status_label.setText(f"方案已加载: {path}")
 

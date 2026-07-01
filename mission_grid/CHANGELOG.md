@@ -7,6 +7,41 @@
 
 ---
 
+## [1.5.0] - 2026-07-01
+
+### 新增
+- 3D 点云预览模块 (lidar_view.py)
+  - 使用 pyqtgraph.opengl 进行 GPU 渲染
+  - 支持订阅 FAST-LIO 的 /cloud_registered_body 话题
+  - 后台线程解析与降采样，UI 线程只负责渲染
+  - 支持 rosbridge_server 连接
+- 摄像头测试工具
+  - check_camera.py：摄像头状态检查
+  - diagnose_camera.sh：摄像头诊断脚本
+  - quick_camera.sh：快速摄像头测试
+  - start_camera_server.sh：摄像头服务器启动
+  - start_camera_v2.sh：摄像头 V2 启动
+- 任务测试系统
+  - test_mission.py：不起飞测试脚本
+  - 测试指南.md：详细测试说明
+- ROS 编译工具
+  - compile_ros.sh：ROS 编译脚本
+  - ssh_compile.py：SSH 远程编译
+  - fix_permissions.sh：权限修复脚本
+- 其他工具
+  - push_all.bat：一键推送所有更改
+  - start_all_services.sh：一键启动所有服务
+
+### 变更
+- 依赖更新
+  - 新增 pyqtgraph：3D 点云渲染
+  - 新增 websocket-client：rosbridge 连接
+- 文档更新
+  - README.md：添加新功能说明
+  - 测试指南.md：任务包测试流程
+
+---
+
 ## [1.3.1] - 2026-06-30
 
 ### 新增

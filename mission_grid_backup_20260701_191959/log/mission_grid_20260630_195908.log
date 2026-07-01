@@ -1,0 +1,266 @@
+2026-06-30 19:59:08 [INFO] root: MissionGrid 启动，日志文件: D:\00Ai\Agents\MimoCode\workspace\ticup\mission_grid\log\mission_grid_20260630_195908.log
+2026-06-30 19:59:08 [INFO] mission_grid_app.main: MissionGrid 地面站启动中...
+2026-06-30 19:59:08 [INFO] mission_grid_app.main: 创建主窗口...
+2026-06-30 19:59:09 [INFO] mission_grid_app.main: 进入事件循环
+2026-06-30 19:59:13 [DEBUG] paramiko.transport: starting thread (client mode): 0x6b299160
+2026-06-30 19:59:13 [DEBUG] paramiko.transport: Local version/idstring: SSH-2.0-paramiko_5.0.0
+2026-06-30 19:59:13 [DEBUG] paramiko.transport: Remote version/idstring: SSH-2.0-OpenSSH_8.2p1 Ubuntu-4ubuntu0.11
+2026-06-30 19:59:13 [INFO] paramiko.transport: Connected (version 2.0, client OpenSSH_8.2p1)
+2026-06-30 19:59:13 [DEBUG] paramiko.transport: === Key exchange possibilities ===
+2026-06-30 19:59:13 [DEBUG] paramiko.transport: kex algos: curve25519-sha256, curve25519-sha256@libssh.org, ecdh-sha2-nistp256, ecdh-sha2-nistp384, ecdh-sha2-nistp521, diffie-hellman-group-exchange-sha256, diffie-hellman-group16-sha512, diffie-hellman-group18-sha512, diffie-hellman-group14-sha256, kex-strict-s-v00@openssh.com
+2026-06-30 19:59:13 [DEBUG] paramiko.transport: server key: rsa-sha2-512, rsa-sha2-256, ssh-rsa, ecdsa-sha2-nistp256, ssh-ed25519
+2026-06-30 19:59:13 [DEBUG] paramiko.transport: client encrypt: chacha20-poly1305@openssh.com, aes128-ctr, aes192-ctr, aes256-ctr, aes128-gcm@openssh.com, aes256-gcm@openssh.com
+2026-06-30 19:59:13 [DEBUG] paramiko.transport: server encrypt: chacha20-poly1305@openssh.com, aes128-ctr, aes192-ctr, aes256-ctr, aes128-gcm@openssh.com, aes256-gcm@openssh.com
+2026-06-30 19:59:13 [DEBUG] paramiko.transport: client mac: umac-64-etm@openssh.com, umac-128-etm@openssh.com, hmac-sha2-256-etm@openssh.com, hmac-sha2-512-etm@openssh.com, hmac-sha1-etm@openssh.com, umac-64@openssh.com, umac-128@openssh.com, hmac-sha2-256, hmac-sha2-512, hmac-sha1
+2026-06-30 19:59:13 [DEBUG] paramiko.transport: server mac: umac-64-etm@openssh.com, umac-128-etm@openssh.com, hmac-sha2-256-etm@openssh.com, hmac-sha2-512-etm@openssh.com, hmac-sha1-etm@openssh.com, umac-64@openssh.com, umac-128@openssh.com, hmac-sha2-256, hmac-sha2-512, hmac-sha1
+2026-06-30 19:59:13 [DEBUG] paramiko.transport: client compress: none, zlib@openssh.com
+2026-06-30 19:59:13 [DEBUG] paramiko.transport: server compress: none, zlib@openssh.com
+2026-06-30 19:59:13 [DEBUG] paramiko.transport: client lang: <none>
+2026-06-30 19:59:13 [DEBUG] paramiko.transport: server lang: <none>
+2026-06-30 19:59:13 [DEBUG] paramiko.transport: kex follows: False
+2026-06-30 19:59:13 [DEBUG] paramiko.transport: === Key exchange agreements ===
+2026-06-30 19:59:13 [DEBUG] paramiko.transport: Strict kex mode: True
+2026-06-30 19:59:13 [DEBUG] paramiko.transport: Kex: curve25519-sha256@libssh.org
+2026-06-30 19:59:13 [DEBUG] paramiko.transport: HostKey: ssh-ed25519
+2026-06-30 19:59:13 [DEBUG] paramiko.transport: Cipher: aes128-ctr
+2026-06-30 19:59:13 [DEBUG] paramiko.transport: MAC: hmac-sha2-256
+2026-06-30 19:59:13 [DEBUG] paramiko.transport: Compression: none
+2026-06-30 19:59:13 [DEBUG] paramiko.transport: === End of kex handshake ===
+2026-06-30 19:59:13 [DEBUG] paramiko.transport: Resetting outbound seqno after NEWKEYS due to strict mode
+2026-06-30 19:59:13 [DEBUG] paramiko.transport: kex engine KexCurve25519 specified hash_algo <built-in function openssl_sha256>
+2026-06-30 19:59:13 [DEBUG] paramiko.transport: Switch to new keys ...
+2026-06-30 19:59:13 [DEBUG] paramiko.transport: Resetting inbound seqno after NEWKEYS due to strict mode
+2026-06-30 19:59:13 [DEBUG] paramiko.transport: Adding ssh-ed25519 host key for 10.209.49.217: b'f376e81af9d8d86a4134ee857ec22eb6'
+2026-06-30 19:59:13 [DEBUG] paramiko.transport: Got EXT_INFO: {'server-sig-algs': b'ssh-ed25519,sk-ssh-ed25519@openssh.com,ssh-rsa,rsa-sha2-256,rsa-sha2-512,ssh-dss,ecdsa-sha2-nistp256,ecdsa-sha2-nistp384,ecdsa-sha2-nistp521,sk-ecdsa-sha2-nistp256@openssh.com'}
+2026-06-30 19:59:13 [DEBUG] paramiko.transport: userauth is OK
+2026-06-30 19:59:13 [INFO] paramiko.transport: Authentication (password) successful!
+2026-06-30 19:59:13 [DEBUG] paramiko.transport: [chan 0] Max packet in: 32768 bytes
+2026-06-30 19:59:13 [DEBUG] paramiko.transport: Received global request "hostkeys-00@openssh.com"
+2026-06-30 19:59:13 [DEBUG] paramiko.transport: Rejecting "hostkeys-00@openssh.com" global request from server.
+2026-06-30 19:59:13 [DEBUG] paramiko.transport: [chan 0] Max packet out: 32768 bytes
+2026-06-30 19:59:13 [DEBUG] paramiko.transport: Secsh channel 0 opened.
+2026-06-30 19:59:13 [DEBUG] paramiko.transport: [chan 0] Sesch channel 0 request ok
+2026-06-30 19:59:13 [DEBUG] paramiko.transport: [chan 0] EOF received (0)
+2026-06-30 19:59:13 [DEBUG] paramiko.transport: [chan 0] EOF sent (0)
+2026-06-30 19:59:14 [DEBUG] paramiko.transport: [chan 1] Max packet in: 32768 bytes
+2026-06-30 19:59:14 [DEBUG] paramiko.transport: [chan 1] Max packet out: 32768 bytes
+2026-06-30 19:59:14 [DEBUG] paramiko.transport: Secsh channel 1 opened.
+2026-06-30 19:59:14 [DEBUG] paramiko.transport: [chan 1] Sesch channel 1 request ok
+2026-06-30 19:59:14 [DEBUG] paramiko.transport: [chan 1] EOF received (1)
+2026-06-30 19:59:14 [DEBUG] paramiko.transport: [chan 1] EOF sent (1)
+2026-06-30 19:59:15 [DEBUG] paramiko.transport: [chan 2] Max packet in: 32768 bytes
+2026-06-30 19:59:15 [DEBUG] paramiko.transport: [chan 2] Max packet out: 32768 bytes
+2026-06-30 19:59:15 [DEBUG] paramiko.transport: Secsh channel 2 opened.
+2026-06-30 19:59:15 [DEBUG] paramiko.transport: [chan 2] Sesch channel 2 request ok
+2026-06-30 19:59:15 [DEBUG] paramiko.transport: [chan 2] EOF received (2)
+2026-06-30 19:59:15 [DEBUG] paramiko.transport: [chan 2] EOF sent (2)
+2026-06-30 19:59:15 [DEBUG] paramiko.transport: [chan 3] Max packet in: 32768 bytes
+2026-06-30 19:59:15 [DEBUG] paramiko.transport: [chan 3] Max packet out: 32768 bytes
+2026-06-30 19:59:15 [DEBUG] paramiko.transport: Secsh channel 3 opened.
+2026-06-30 19:59:15 [DEBUG] paramiko.transport: [chan 3] Sesch channel 3 request ok
+2026-06-30 19:59:15 [DEBUG] paramiko.transport: [chan 3] EOF received (3)
+2026-06-30 19:59:15 [DEBUG] paramiko.transport: [chan 3] EOF sent (3)
+2026-06-30 19:59:16 [DEBUG] paramiko.transport: [chan 4] Max packet in: 32768 bytes
+2026-06-30 19:59:16 [DEBUG] paramiko.transport: [chan 4] Max packet out: 32768 bytes
+2026-06-30 19:59:16 [DEBUG] paramiko.transport: Secsh channel 4 opened.
+2026-06-30 19:59:16 [DEBUG] paramiko.transport: [chan 4] Sesch channel 4 request ok
+2026-06-30 19:59:16 [DEBUG] paramiko.transport: [chan 4] EOF received (4)
+2026-06-30 19:59:16 [DEBUG] paramiko.transport: [chan 4] EOF sent (4)
+2026-06-30 19:59:16 [DEBUG] paramiko.transport: [chan 5] Max packet in: 32768 bytes
+2026-06-30 19:59:16 [DEBUG] paramiko.transport: [chan 5] Max packet out: 32768 bytes
+2026-06-30 19:59:16 [DEBUG] paramiko.transport: Secsh channel 5 opened.
+2026-06-30 19:59:16 [DEBUG] paramiko.transport: [chan 5] Sesch channel 5 request ok
+2026-06-30 19:59:16 [DEBUG] paramiko.transport: [chan 5] EOF received (5)
+2026-06-30 19:59:16 [DEBUG] paramiko.transport: [chan 5] EOF sent (5)
+2026-06-30 19:59:16 [DEBUG] paramiko.transport: [chan 6] Max packet in: 32768 bytes
+2026-06-30 19:59:16 [DEBUG] paramiko.transport: [chan 6] Max packet out: 32768 bytes
+2026-06-30 19:59:16 [DEBUG] paramiko.transport: Secsh channel 6 opened.
+2026-06-30 19:59:16 [DEBUG] paramiko.transport: [chan 6] Sesch channel 6 request ok
+2026-06-30 19:59:16 [DEBUG] paramiko.transport: [chan 6] EOF received (6)
+2026-06-30 19:59:16 [DEBUG] paramiko.transport: [chan 6] EOF sent (6)
+2026-06-30 19:59:17 [DEBUG] paramiko.transport: [chan 7] Max packet in: 32768 bytes
+2026-06-30 19:59:17 [DEBUG] paramiko.transport: [chan 7] Max packet out: 32768 bytes
+2026-06-30 19:59:17 [DEBUG] paramiko.transport: Secsh channel 7 opened.
+2026-06-30 19:59:17 [DEBUG] paramiko.transport: [chan 7] Sesch channel 7 request ok
+2026-06-30 19:59:17 [DEBUG] paramiko.transport: [chan 7] EOF received (7)
+2026-06-30 19:59:17 [DEBUG] paramiko.transport: [chan 7] EOF sent (7)
+2026-06-30 19:59:17 [DEBUG] paramiko.transport: [chan 8] Max packet in: 32768 bytes
+2026-06-30 19:59:17 [DEBUG] paramiko.transport: [chan 8] Max packet out: 32768 bytes
+2026-06-30 19:59:17 [DEBUG] paramiko.transport: Secsh channel 8 opened.
+2026-06-30 19:59:17 [DEBUG] paramiko.transport: [chan 8] Sesch channel 8 request ok
+2026-06-30 19:59:17 [DEBUG] paramiko.transport: [chan 8] EOF received (8)
+2026-06-30 19:59:17 [DEBUG] paramiko.transport: [chan 8] EOF sent (8)
+2026-06-30 19:59:18 [DEBUG] paramiko.transport: [chan 9] Max packet in: 32768 bytes
+2026-06-30 19:59:18 [DEBUG] paramiko.transport: [chan 9] Max packet out: 32768 bytes
+2026-06-30 19:59:18 [DEBUG] paramiko.transport: Secsh channel 9 opened.
+2026-06-30 19:59:18 [DEBUG] paramiko.transport: [chan 9] Sesch channel 9 request ok
+2026-06-30 19:59:18 [DEBUG] paramiko.transport: [chan 9] EOF received (9)
+2026-06-30 19:59:18 [DEBUG] paramiko.transport: [chan 9] EOF sent (9)
+2026-06-30 19:59:18 [DEBUG] paramiko.transport: [chan 10] Max packet in: 32768 bytes
+2026-06-30 19:59:18 [DEBUG] paramiko.transport: [chan 10] Max packet out: 32768 bytes
+2026-06-30 19:59:18 [DEBUG] paramiko.transport: Secsh channel 10 opened.
+2026-06-30 19:59:18 [DEBUG] paramiko.transport: [chan 10] Sesch channel 10 request ok
+2026-06-30 19:59:18 [DEBUG] paramiko.transport: [chan 10] EOF received (10)
+2026-06-30 19:59:18 [DEBUG] paramiko.transport: [chan 10] EOF sent (10)
+2026-06-30 19:59:19 [DEBUG] paramiko.transport: [chan 11] Max packet in: 32768 bytes
+2026-06-30 19:59:19 [DEBUG] paramiko.transport: [chan 11] Max packet out: 32768 bytes
+2026-06-30 19:59:19 [DEBUG] paramiko.transport: Secsh channel 11 opened.
+2026-06-30 19:59:19 [DEBUG] paramiko.transport: [chan 11] Sesch channel 11 request ok
+2026-06-30 19:59:19 [DEBUG] paramiko.transport: [chan 11] EOF received (11)
+2026-06-30 19:59:19 [DEBUG] paramiko.transport: [chan 11] EOF sent (11)
+2026-06-30 19:59:39 [DEBUG] paramiko.transport: [chan 12] Max packet in: 32768 bytes
+2026-06-30 19:59:39 [DEBUG] paramiko.transport: [chan 12] Max packet out: 32768 bytes
+2026-06-30 19:59:39 [DEBUG] paramiko.transport: Secsh channel 12 opened.
+2026-06-30 19:59:39 [DEBUG] paramiko.transport: [chan 12] Sesch channel 12 request ok
+2026-06-30 19:59:39 [DEBUG] paramiko.transport: [chan 12] EOF received (12)
+2026-06-30 19:59:39 [DEBUG] paramiko.transport: [chan 12] EOF sent (12)
+2026-06-30 19:59:42 [DEBUG] paramiko.transport: [chan 13] Max packet in: 32768 bytes
+2026-06-30 19:59:42 [DEBUG] paramiko.transport: [chan 13] Max packet out: 32768 bytes
+2026-06-30 19:59:42 [DEBUG] paramiko.transport: Secsh channel 13 opened.
+2026-06-30 19:59:42 [DEBUG] paramiko.transport: [chan 13] Sesch channel 13 request ok
+2026-06-30 19:59:42 [DEBUG] paramiko.transport: [chan 13] EOF received (13)
+2026-06-30 19:59:42 [DEBUG] paramiko.transport: [chan 13] EOF sent (13)
+2026-06-30 19:59:42 [DEBUG] paramiko.transport: [chan 14] Max packet in: 32768 bytes
+2026-06-30 19:59:42 [DEBUG] paramiko.transport: [chan 14] Max packet out: 32768 bytes
+2026-06-30 19:59:42 [DEBUG] paramiko.transport: Secsh channel 14 opened.
+2026-06-30 19:59:42 [DEBUG] paramiko.transport: [chan 14] Sesch channel 14 request ok
+2026-06-30 19:59:42 [DEBUG] paramiko.transport: [chan 14] EOF received (14)
+2026-06-30 19:59:42 [DEBUG] paramiko.transport: [chan 14] EOF sent (14)
+2026-06-30 19:59:43 [DEBUG] paramiko.transport: [chan 15] Max packet in: 32768 bytes
+2026-06-30 19:59:43 [DEBUG] paramiko.transport: [chan 15] Max packet out: 32768 bytes
+2026-06-30 19:59:43 [DEBUG] paramiko.transport: Secsh channel 15 opened.
+2026-06-30 19:59:43 [DEBUG] paramiko.transport: [chan 15] Sesch channel 15 request ok
+2026-06-30 19:59:43 [DEBUG] paramiko.transport: [chan 15] EOF received (15)
+2026-06-30 19:59:43 [DEBUG] paramiko.transport: [chan 15] EOF sent (15)
+2026-06-30 19:59:43 [DEBUG] paramiko.transport: [chan 16] Max packet in: 32768 bytes
+2026-06-30 19:59:43 [DEBUG] paramiko.transport: [chan 16] Max packet out: 32768 bytes
+2026-06-30 19:59:43 [DEBUG] paramiko.transport: Secsh channel 16 opened.
+2026-06-30 19:59:43 [DEBUG] paramiko.transport: [chan 16] Sesch channel 16 request ok
+2026-06-30 19:59:44 [DEBUG] paramiko.transport: [chan 16] EOF received (16)
+2026-06-30 19:59:44 [DEBUG] paramiko.transport: [chan 16] EOF sent (16)
+2026-06-30 19:59:44 [DEBUG] paramiko.transport: [chan 17] Max packet in: 32768 bytes
+2026-06-30 19:59:44 [DEBUG] paramiko.transport: [chan 17] Max packet out: 32768 bytes
+2026-06-30 19:59:44 [DEBUG] paramiko.transport: Secsh channel 17 opened.
+2026-06-30 19:59:44 [DEBUG] paramiko.transport: [chan 17] Sesch channel 17 request ok
+2026-06-30 19:59:44 [DEBUG] paramiko.transport: [chan 17] EOF received (17)
+2026-06-30 19:59:44 [DEBUG] paramiko.transport: [chan 17] EOF sent (17)
+2026-06-30 19:59:44 [DEBUG] paramiko.transport: [chan 18] Max packet in: 32768 bytes
+2026-06-30 19:59:44 [DEBUG] paramiko.transport: [chan 18] Max packet out: 32768 bytes
+2026-06-30 19:59:44 [DEBUG] paramiko.transport: Secsh channel 18 opened.
+2026-06-30 19:59:44 [DEBUG] paramiko.transport: [chan 18] Sesch channel 18 request ok
+2026-06-30 19:59:44 [DEBUG] paramiko.transport: [chan 18] EOF received (18)
+2026-06-30 19:59:44 [DEBUG] paramiko.transport: [chan 18] EOF sent (18)
+2026-06-30 19:59:44 [DEBUG] paramiko.transport: [chan 19] Max packet in: 32768 bytes
+2026-06-30 19:59:44 [DEBUG] paramiko.transport: [chan 19] Max packet out: 32768 bytes
+2026-06-30 19:59:44 [DEBUG] paramiko.transport: Secsh channel 19 opened.
+2026-06-30 19:59:44 [DEBUG] paramiko.transport: [chan 19] Sesch channel 19 request ok
+2026-06-30 19:59:44 [DEBUG] paramiko.transport: [chan 19] EOF received (19)
+2026-06-30 19:59:44 [DEBUG] paramiko.transport: [chan 19] EOF sent (19)
+2026-06-30 19:59:45 [DEBUG] paramiko.transport: [chan 20] Max packet in: 32768 bytes
+2026-06-30 19:59:45 [DEBUG] paramiko.transport: [chan 20] Max packet out: 32768 bytes
+2026-06-30 19:59:45 [DEBUG] paramiko.transport: Secsh channel 20 opened.
+2026-06-30 19:59:45 [DEBUG] paramiko.transport: [chan 20] Sesch channel 20 request ok
+2026-06-30 19:59:45 [DEBUG] paramiko.transport: [chan 20] EOF received (20)
+2026-06-30 19:59:45 [DEBUG] paramiko.transport: [chan 20] EOF sent (20)
+2026-06-30 19:59:45 [DEBUG] paramiko.transport: [chan 21] Max packet in: 32768 bytes
+2026-06-30 19:59:45 [DEBUG] paramiko.transport: [chan 21] Max packet out: 32768 bytes
+2026-06-30 19:59:45 [DEBUG] paramiko.transport: Secsh channel 21 opened.
+2026-06-30 19:59:45 [DEBUG] paramiko.transport: [chan 21] Sesch channel 21 request ok
+2026-06-30 19:59:45 [DEBUG] paramiko.transport: [chan 21] EOF received (21)
+2026-06-30 19:59:45 [DEBUG] paramiko.transport: [chan 21] EOF sent (21)
+2026-06-30 19:59:46 [DEBUG] paramiko.transport: [chan 22] Max packet in: 32768 bytes
+2026-06-30 19:59:46 [DEBUG] paramiko.transport: [chan 22] Max packet out: 32768 bytes
+2026-06-30 19:59:46 [DEBUG] paramiko.transport: Secsh channel 22 opened.
+2026-06-30 19:59:46 [DEBUG] paramiko.transport: [chan 22] Sesch channel 22 request ok
+2026-06-30 19:59:46 [DEBUG] paramiko.transport: [chan 22] EOF received (22)
+2026-06-30 19:59:46 [DEBUG] paramiko.transport: [chan 22] EOF sent (22)
+2026-06-30 19:59:46 [DEBUG] paramiko.transport: [chan 23] Max packet in: 32768 bytes
+2026-06-30 19:59:46 [DEBUG] paramiko.transport: [chan 23] Max packet out: 32768 bytes
+2026-06-30 19:59:46 [DEBUG] paramiko.transport: Secsh channel 23 opened.
+2026-06-30 19:59:46 [DEBUG] paramiko.transport: [chan 23] Sesch channel 23 request ok
+2026-06-30 19:59:46 [DEBUG] paramiko.transport: [chan 23] EOF received (23)
+2026-06-30 19:59:46 [DEBUG] paramiko.transport: [chan 23] EOF sent (23)
+2026-06-30 19:59:47 [DEBUG] paramiko.transport: [chan 24] Max packet in: 32768 bytes
+2026-06-30 19:59:47 [DEBUG] paramiko.transport: [chan 24] Max packet out: 32768 bytes
+2026-06-30 19:59:47 [DEBUG] paramiko.transport: Secsh channel 24 opened.
+2026-06-30 19:59:47 [DEBUG] paramiko.transport: [chan 24] Sesch channel 24 request ok
+2026-06-30 19:59:47 [DEBUG] paramiko.transport: [chan 24] EOF received (24)
+2026-06-30 19:59:47 [DEBUG] paramiko.transport: [chan 24] EOF sent (24)
+2026-06-30 19:59:47 [DEBUG] paramiko.transport: [chan 25] Max packet in: 32768 bytes
+2026-06-30 19:59:47 [DEBUG] paramiko.transport: [chan 25] Max packet out: 32768 bytes
+2026-06-30 19:59:47 [DEBUG] paramiko.transport: Secsh channel 25 opened.
+2026-06-30 19:59:47 [DEBUG] paramiko.transport: [chan 25] Sesch channel 25 request ok
+2026-06-30 19:59:47 [DEBUG] paramiko.transport: [chan 25] EOF received (25)
+2026-06-30 19:59:47 [DEBUG] paramiko.transport: [chan 25] EOF sent (25)
+2026-06-30 19:59:48 [DEBUG] paramiko.transport: [chan 26] Max packet in: 32768 bytes
+2026-06-30 19:59:48 [DEBUG] paramiko.transport: [chan 26] Max packet out: 32768 bytes
+2026-06-30 19:59:48 [DEBUG] paramiko.transport: Secsh channel 26 opened.
+2026-06-30 19:59:48 [DEBUG] paramiko.transport: [chan 26] Sesch channel 26 request ok
+2026-06-30 19:59:48 [DEBUG] paramiko.transport: [chan 26] EOF received (26)
+2026-06-30 19:59:48 [DEBUG] paramiko.transport: [chan 26] EOF sent (26)
+2026-06-30 19:59:48 [DEBUG] paramiko.transport: [chan 27] Max packet in: 32768 bytes
+2026-06-30 19:59:48 [DEBUG] paramiko.transport: [chan 27] Max packet out: 32768 bytes
+2026-06-30 19:59:48 [DEBUG] paramiko.transport: Secsh channel 27 opened.
+2026-06-30 19:59:48 [DEBUG] paramiko.transport: [chan 27] Sesch channel 27 request ok
+2026-06-30 19:59:48 [DEBUG] paramiko.transport: [chan 27] EOF received (27)
+2026-06-30 19:59:48 [DEBUG] paramiko.transport: [chan 27] EOF sent (27)
+2026-06-30 19:59:48 [DEBUG] paramiko.transport: [chan 28] Max packet in: 32768 bytes
+2026-06-30 19:59:48 [DEBUG] paramiko.transport: [chan 28] Max packet out: 32768 bytes
+2026-06-30 19:59:48 [DEBUG] paramiko.transport: Secsh channel 28 opened.
+2026-06-30 19:59:49 [DEBUG] paramiko.transport: [chan 28] Sesch channel 28 request ok
+2026-06-30 19:59:49 [DEBUG] paramiko.transport: [chan 28] EOF received (28)
+2026-06-30 19:59:49 [DEBUG] paramiko.transport: [chan 28] EOF sent (28)
+2026-06-30 19:59:49 [DEBUG] paramiko.transport: [chan 29] Max packet in: 32768 bytes
+2026-06-30 19:59:49 [DEBUG] paramiko.transport: [chan 29] Max packet out: 32768 bytes
+2026-06-30 19:59:49 [DEBUG] paramiko.transport: Secsh channel 29 opened.
+2026-06-30 19:59:49 [DEBUG] paramiko.transport: [chan 29] Sesch channel 29 request ok
+2026-06-30 19:59:49 [DEBUG] paramiko.transport: [chan 29] EOF received (29)
+2026-06-30 19:59:49 [DEBUG] paramiko.transport: [chan 29] EOF sent (29)
+2026-06-30 19:59:49 [DEBUG] paramiko.transport: [chan 30] Max packet in: 32768 bytes
+2026-06-30 19:59:49 [DEBUG] paramiko.transport: [chan 30] Max packet out: 32768 bytes
+2026-06-30 19:59:49 [DEBUG] paramiko.transport: Secsh channel 30 opened.
+2026-06-30 19:59:49 [DEBUG] paramiko.transport: [chan 30] Sesch channel 30 request ok
+2026-06-30 19:59:50 [DEBUG] paramiko.transport: [chan 30] EOF received (30)
+2026-06-30 19:59:50 [DEBUG] paramiko.transport: [chan 30] EOF sent (30)
+2026-06-30 19:59:50 [DEBUG] paramiko.transport: [chan 31] Max packet in: 32768 bytes
+2026-06-30 19:59:50 [DEBUG] paramiko.transport: [chan 31] Max packet out: 32768 bytes
+2026-06-30 19:59:50 [DEBUG] paramiko.transport: Secsh channel 31 opened.
+2026-06-30 19:59:50 [DEBUG] paramiko.transport: [chan 31] Sesch channel 31 request ok
+2026-06-30 19:59:50 [DEBUG] paramiko.transport: [chan 31] EOF received (31)
+2026-06-30 19:59:50 [DEBUG] paramiko.transport: [chan 31] EOF sent (31)
+2026-06-30 19:59:54 [DEBUG] paramiko.transport: [chan 32] Max packet in: 32768 bytes
+2026-06-30 19:59:54 [DEBUG] paramiko.transport: [chan 32] Max packet out: 32768 bytes
+2026-06-30 19:59:54 [DEBUG] paramiko.transport: Secsh channel 32 opened.
+2026-06-30 19:59:54 [DEBUG] paramiko.transport: [chan 32] Sesch channel 32 request ok
+2026-06-30 19:59:54 [DEBUG] paramiko.transport: [chan 32] EOF received (32)
+2026-06-30 19:59:54 [DEBUG] paramiko.transport: [chan 32] EOF sent (32)
+2026-06-30 19:59:54 [DEBUG] paramiko.transport: [chan 33] Max packet in: 32768 bytes
+2026-06-30 19:59:54 [DEBUG] paramiko.transport: [chan 33] Max packet out: 32768 bytes
+2026-06-30 19:59:54 [DEBUG] paramiko.transport: Secsh channel 33 opened.
+2026-06-30 19:59:54 [DEBUG] paramiko.transport: [chan 33] Sesch channel 33 request ok
+2026-06-30 19:59:54 [DEBUG] paramiko.transport: [chan 33] EOF received (33)
+2026-06-30 19:59:54 [DEBUG] paramiko.transport: [chan 33] EOF sent (33)
+2026-06-30 19:59:55 [DEBUG] paramiko.transport: [chan 34] Max packet in: 32768 bytes
+2026-06-30 19:59:55 [DEBUG] paramiko.transport: [chan 34] Max packet out: 32768 bytes
+2026-06-30 19:59:55 [DEBUG] paramiko.transport: Secsh channel 34 opened.
+2026-06-30 19:59:55 [DEBUG] paramiko.transport: [chan 34] Sesch channel 34 request ok
+2026-06-30 19:59:55 [DEBUG] paramiko.transport: [chan 34] EOF received (34)
+2026-06-30 19:59:55 [DEBUG] paramiko.transport: [chan 34] EOF sent (34)
+2026-06-30 19:59:55 [DEBUG] paramiko.transport: [chan 35] Max packet in: 32768 bytes
+2026-06-30 19:59:55 [DEBUG] paramiko.transport: [chan 35] Max packet out: 32768 bytes
+2026-06-30 19:59:55 [DEBUG] paramiko.transport: Secsh channel 35 opened.
+2026-06-30 19:59:55 [DEBUG] paramiko.transport: [chan 35] Sesch channel 35 request ok
+2026-06-30 19:59:55 [DEBUG] paramiko.transport: [chan 35] EOF received (35)
+2026-06-30 19:59:55 [DEBUG] paramiko.transport: [chan 35] EOF sent (35)
+2026-06-30 19:59:56 [DEBUG] paramiko.transport: [chan 36] Max packet in: 32768 bytes
+2026-06-30 19:59:56 [DEBUG] paramiko.transport: [chan 36] Max packet out: 32768 bytes
+2026-06-30 19:59:56 [DEBUG] paramiko.transport: Secsh channel 36 opened.
+2026-06-30 19:59:56 [DEBUG] paramiko.transport: [chan 36] Sesch channel 36 request ok
+2026-06-30 19:59:56 [DEBUG] paramiko.transport: [chan 36] EOF received (36)
+2026-06-30 19:59:56 [DEBUG] paramiko.transport: [chan 36] EOF sent (36)
+2026-06-30 19:59:56 [DEBUG] paramiko.transport: [chan 37] Max packet in: 32768 bytes
+2026-06-30 19:59:56 [DEBUG] paramiko.transport: [chan 37] Max packet out: 32768 bytes
+2026-06-30 19:59:56 [DEBUG] paramiko.transport: Secsh channel 37 opened.
+2026-06-30 19:59:56 [DEBUG] paramiko.transport: [chan 37] Sesch channel 37 request ok
+2026-06-30 19:59:56 [DEBUG] paramiko.transport: [chan 37] EOF received (37)
+2026-06-30 19:59:56 [DEBUG] paramiko.transport: [chan 37] EOF sent (37)

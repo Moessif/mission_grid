@@ -1,0 +1,86 @@
+{
+  "takeoff_col": 8,
+  "takeoff_row": 0,
+  "flight_altitude": 1.2,
+  "main_task_cells": [],
+  "main_task_conditions": [],
+  "waypoints": [
+    {
+      "col": 8,
+      "row": 0,
+      "grid_x": 0.0,
+      "grid_y": 0.0,
+      "altitude": 1.2,
+      "actions": [
+        {
+          "type": "takeoff",
+          "triggers": [
+            "always"
+          ]
+        }
+      ]
+    },
+    {
+      "col": 7,
+      "row": 1,
+      "grid_x": 0.5,
+      "grid_y": 0.5,
+      "altitude": 1.2,
+      "actions": []
+    },
+    {
+      "col": 7,
+      "row": 2,
+      "grid_x": 0.5,
+      "grid_y": 1.0,
+      "altitude": 1.2,
+      "actions": []
+    },
+    {
+      "col": 7,
+      "row": 3,
+      "grid_x": 0.5,
+      "grid_y": 1.5,
+      "altitude": 1.2,
+      "actions": [
+        {
+          "type": "photo",
+          "triggers": [
+            "always"
+          ]
+        }
+      ]
+    },
+    {
+      "col": 8,
+      "row": 2,
+      "grid_x": 0.0,
+      "grid_y": 1.0,
+      "altitude": 1.2,
+      "actions": []
+    },
+    {
+      "col": 8,
+      "row": 1,
+      "grid_x": 0.0,
+      "grid_y": 0.5,
+      "altitude": 1.2,
+      "actions": []
+    },
+    {
+      "col": 8,
+      "row": 0,
+      "grid_x": 0.0,
+      "grid_y": 0.0,
+      "altitude": 1.2,
+      "actions": [
+        {
+          "type": "takeoff",
+          "triggers": [
+            "always"
+          ]
+        }
+      ]
+    }
+  ]
+}

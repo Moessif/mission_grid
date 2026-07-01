@@ -82,6 +82,14 @@ class CellAction:
     triggers: List[str] = field(default_factory=lambda: ["always"])
 
 
+CellState = str
+
+CELL_STATE_CLEAR = "clear"
+CELL_STATE_KNOWN_NO_FLY = "known_no_fly"
+CELL_STATE_UNKNOWN_NO_FLY = "unknown_no_fly"
+CELL_STATE_OBSTACLE = "obstacle"
+
+
 @dataclass
 class GridConfig:
     """
@@ -96,7 +104,11 @@ class GridConfig:
         takeoff_col/row: 起飞点网格坐标（默认 A9B1）
         flight_altitude: 飞行高度（米）
         actions: 动作映射 {(col, row): [CellAction, ...]}
-        no_fly: 禁飞区坐标集合
+        known_no_fly: 起飞前已知禁飞区
+        unknown_no_fly: 起飞前未知、飞行中可发现的禁飞区
+        obstacles: 起飞后扫描发现的障碍物
+        discovered_unknown_no_fly: 飞行中已发现的未知禁飞区
+        discovered_obstacles: 飞行中已发现的障碍物
         fence_*: 电子围栏边界（米）
         custom_waypoints: 手动编辑的航点序列
         main_task_cells: 主线任务格子集合
@@ -109,7 +121,11 @@ class GridConfig:
     takeoff_row: int = 0
     flight_altitude: float = 1.2      # 默认飞行高度 1.2m
     actions: Dict[Tuple[int, int], List[CellAction]] = field(default_factory=dict)
-    no_fly: set = field(default_factory=set)
+    known_no_fly: set = field(default_factory=set)
+    unknown_no_fly: set = field(default_factory=set)
+    obstacles: set = field(default_factory=set)
+    discovered_unknown_no_fly: set = field(default_factory=set)
+    discovered_obstacles: set = field(default_factory=set)
     fence_min_x: float = 0.0
     fence_max_x: float = 4.0
     fence_min_y: float = 0.0
@@ -151,9 +167,100 @@ class GridConfig:
         """指定格子是否有动作配置。"""
         return (col, row) in self.actions and len(self.actions[(col, row)]) > 0
 
+    def in_bounds(self, col: int, row: int) -> bool:
+        """指定格子是否在网格范围内。"""
+        return 0 <= col < self.cols and 0 <= row < self.rows
+
+    @property
+    def no_fly(self) -> set:
+        """兼容旧接口：等价于起飞前已知禁飞区。"""
+        return self.known_no_fly
+
+    @no_fly.setter
+    def no_fly(self, value: set):
+        self.known_no_fly = set(value)
+
+    def is_known_no_fly(self, col: int, row: int) -> bool:
+        return (col, row) in self.known_no_fly
+
+    def is_unknown_no_fly(self, col: int, row: int) -> bool:
+        return (col, row) in self.unknown_no_fly
+
+    def is_obstacle(self, col: int, row: int) -> bool:
+        return (col, row) in self.obstacles
+
+    def is_discovered_unknown_no_fly(self, col: int, row: int) -> bool:
+        return (col, row) in self.discovered_unknown_no_fly
+
+    def is_discovered_obstacle(self, col: int, row: int) -> bool:
+        return (col, row) in self.discovered_obstacles
+
     def is_no_fly(self, col: int, row: int) -> bool:
-        """指定格子是否为禁飞区。"""
-        return (col, row) in self.no_fly
+        """兼容旧接口：已知禁飞区或已发现的未知禁飞区。"""
+        return self.is_known_no_fly(col, row) or self.is_discovered_unknown_no_fly(col, row)
+
+    def is_blocked_preflight(self, col: int, row: int) -> bool:
+        """起飞前规划视图：只避开已知禁飞区。"""
+        return self.is_known_no_fly(col, row)
+
+    def is_blocked_runtime(self, col: int, row: int) -> bool:
+        """运行时规划视图：避开已知禁飞区和已发现风险。"""
+        return (
+            self.is_known_no_fly(col, row)
+            or self.is_discovered_unknown_no_fly(col, row)
+            or self.is_discovered_obstacle(col, row)
+        )
+
+    def _clear_static_cell_state(self, col: int, row: int):
+        cell = (col, row)
+        self.known_no_fly.discard(cell)
+        self.unknown_no_fly.discard(cell)
+        self.obstacles.discard(cell)
+        self.discovered_unknown_no_fly.discard(cell)
+        self.discovered_obstacles.discard(cell)
+
+    def set_cell_state(self, col: int, row: int, state: CellState):
+        """
+        设置格子的静态状态。
+        同一格只能属于一种风险类型；设为风险格时自动清除动作配置。
+        """
+        cell = (col, row)
+        self._clear_static_cell_state(col, row)
+        if state == CELL_STATE_CLEAR:
+            return
+        if state == CELL_STATE_KNOWN_NO_FLY:
+            self.known_no_fly.add(cell)
+        elif state == CELL_STATE_UNKNOWN_NO_FLY:
+            self.unknown_no_fly.add(cell)
+        elif state == CELL_STATE_OBSTACLE:
+            self.obstacles.add(cell)
+        else:
+            raise ValueError(f"未知格子状态: {state}")
+        self.actions.pop(cell, None)
+
+    def clear_cell_state(self, col: int, row: int):
+        """清除格子的所有风险状态。"""
+        self.set_cell_state(col, row, CELL_STATE_CLEAR)
+
+    def get_static_cell_state(self, col: int, row: int) -> CellState:
+        """返回格子的静态编辑状态。"""
+        if self.is_known_no_fly(col, row):
+            return CELL_STATE_KNOWN_NO_FLY
+        if self.is_unknown_no_fly(col, row):
+            return CELL_STATE_UNKNOWN_NO_FLY
+        if self.is_obstacle(col, row):
+            return CELL_STATE_OBSTACLE
+        return CELL_STATE_CLEAR
+
+    def get_runtime_cell_state(self, col: int, row: int) -> CellState:
+        """返回格子的运行时已知状态。"""
+        if self.is_known_no_fly(col, row):
+            return CELL_STATE_KNOWN_NO_FLY
+        if self.is_discovered_unknown_no_fly(col, row):
+            return CELL_STATE_UNKNOWN_NO_FLY
+        if self.is_discovered_obstacle(col, row):
+            return CELL_STATE_OBSTACLE
+        return CELL_STATE_CLEAR
 
     def set_action(self, col: int, row: int, action_list: List[CellAction]):
         """
@@ -166,14 +273,86 @@ class GridConfig:
 
     def toggle_no_fly(self, col: int, row: int):
         """
-        切换格子的禁飞状态。
-        设为禁飞时自动清除该格子的动作配置。
+        兼容旧接口：切换“已知禁飞区”状态。
         """
-        if (col, row) in self.no_fly:
-            self.no_fly.discard((col, row))
+        if self.is_known_no_fly(col, row):
+            self.clear_cell_state(col, row)
         else:
-            self.no_fly.add((col, row))
-            self.actions.pop((col, row), None)
+            self.set_cell_state(col, row, CELL_STATE_KNOWN_NO_FLY)
+
+    def reset_runtime_discovery(self):
+        """清空飞行中发现状态。"""
+        self.discovered_unknown_no_fly.clear()
+        self.discovered_obstacles.clear()
+
+    def discover_cell(self, col: int, row: int) -> Optional[CellState]:
+        """发现单个格子的隐藏风险，返回发现到的状态。"""
+        cell = (col, row)
+        if cell in self.unknown_no_fly and cell not in self.discovered_unknown_no_fly:
+            self.discovered_unknown_no_fly.add(cell)
+            return CELL_STATE_UNKNOWN_NO_FLY
+        if cell in self.obstacles and cell not in self.discovered_obstacles:
+            self.discovered_obstacles.add(cell)
+            return CELL_STATE_OBSTACLE
+        return None
+
+    def discover_cells_around(self, col: int, row: int, radius: int) -> List[Tuple[int, int, CellState]]:
+        """扫描当前位置周围格子，返回本次新发现的风险。"""
+        discovered: List[Tuple[int, int, CellState]] = []
+        radius_sq = max(radius, 0) ** 2
+        for dc in range(-radius, radius + 1):
+            for dr in range(-radius, radius + 1):
+                nc = col + dc
+                nr = row + dr
+                if not self.in_bounds(nc, nr):
+                    continue
+                if dc * dc + dr * dr > radius_sq:
+                    continue
+                state = self.discover_cell(nc, nr)
+                if state:
+                    discovered.append((nc, nr, state))
+        return discovered
+
+    def discover_cells_with_radii(
+        self,
+        col: int,
+        row: int,
+        unknown_no_fly_radius: int,
+        obstacle_radius: int,
+    ) -> List[Tuple[int, int, CellState]]:
+        """按不同风险类型使用不同感知半径进行扫描。"""
+        discovered: List[Tuple[int, int, CellState]] = []
+        max_radius = max(unknown_no_fly_radius, obstacle_radius, 0)
+        unknown_radius_sq = max(unknown_no_fly_radius, 0) ** 2
+        obstacle_radius_sq = max(obstacle_radius, 0) ** 2
+        for dc in range(-max_radius, max_radius + 1):
+            for dr in range(-max_radius, max_radius + 1):
+                nc = col + dc
+                nr = row + dr
+                if not self.in_bounds(nc, nr):
+                    continue
+                dist_sq = dc * dc + dr * dr
+                cell = (nc, nr)
+                if (
+                    cell in self.unknown_no_fly
+                    and cell not in self.discovered_unknown_no_fly
+                    and dist_sq <= unknown_radius_sq
+                ):
+                    self.discovered_unknown_no_fly.add(cell)
+                    discovered.append((nc, nr, CELL_STATE_UNKNOWN_NO_FLY))
+                    continue
+                if (
+                    cell in self.obstacles
+                    and cell not in self.discovered_obstacles
+                    and dist_sq <= obstacle_radius_sq
+                ):
+                    self.discovered_obstacles.add(cell)
+                    discovered.append((nc, nr, CELL_STATE_OBSTACLE))
+        return discovered
+
+    def runtime_blocked_cells(self) -> set:
+        """返回运行时已知阻塞格集合。"""
+        return set(self.known_no_fly) | set(self.discovered_unknown_no_fly) | set(self.discovered_obstacles)
 
     def action_cells(self) -> List[Tuple[int, int]]:
         """返回所有有动作的格子坐标列表（已排序）。"""

@@ -1,0 +1,13 @@
+{
+  "orangepi_ip": "10.209.49.217",
+  "orangepi_user": "orangepi",
+  "orangepi_pass": "orangepi",
+  "flight_controller_ip": "192.168.144.15",
+  "camera_topic": "/image",
+  "pointcloud_topic": "/livox/lidar",
+  "rosbridge_port": 9090,
+  "web_video_port": 8080,
+  "mavlink_port": 14550,
+  "default_altitude": 1.2,
+  "default_speed": 1.0
+}
