@@ -19,10 +19,50 @@ master (稳定版本)
 
 ## 快速开始
 
-### 1. 克隆仓库
+### 1. 环境准备
+
+#### 安装 Git
+1. 下载：https://git-scm.com/download/win
+2. 安装时全部选默认选项
+3. 安装完成后，开始菜单会出现 **"Git Bash"**
+
+#### 配置 Git
+```bash
+git config --global user.name "你的名字"
+git config --global user.email "你的邮箱@example.com"
+```
+
+#### 设置 SSH 密钥（推荐）
+
+SSH 密钥可以免去每次输入用户名密码的麻烦：
 
 ```bash
+# 1. 生成密钥（在 Git Bash 中执行）
+ssh-keygen -t ed25519 -C "你的邮箱@example.com"
+# 一路回车使用默认设置
+
+# 2. 查看公钥
+cat ~/.ssh/id_ed25519.pub
+
+# 3. 复制公钥内容，添加到 GitHub：
+#    - 打开 https://github.com/settings/keys
+#    - 点击 "New SSH key"
+#    - 粘贴公钥内容
+#    - 点击 "Add SSH key"
+
+# 4. 测试连接
+ssh -T git@github.com
+```
+
+### 2. 克隆仓库
+
+```bash
+# 使用 SSH（推荐）
+git clone git@github.com:Moessif/mission_grid.git
+
+# 或使用 HTTPS
 git clone https://github.com/Moessif/mission_grid.git
+
 cd mission_grid
 ```
 

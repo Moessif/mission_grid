@@ -15,20 +15,24 @@
 | 网格编辑器 | 7×9 可视化网格，左键设置动作，右键标记禁飞区 |
 | 动作系统 | 10 种动作：起飞 / 拍照 / 二维码 / YOLO 识别 / H 降落 / 降落 / 航向 / 蜂鸣器 / 舵机 / 激光 |
 | 触发条件 | 每次经过 / 首次经过 / 最后经过 / 主线完成后，多条件 AND 逻辑 |
-| 主线任务 | 标记主线格子 + 全局完成条件（所有检测完成 / 所有二维码扫描完成等） |
-| 路径规划 | A* 寻路 + TSP 旅行商求解（≤12 点精确 DP，>12 点 SA 启发式）+ 蛇形遍历 |
+| 主线任务 | 标记主线格子 + 全局完成条件 |
+| 路径规划 | A* 寻路 + TSP 旅行商求解 + 蛇形遍历 |
 | 斜飞支持 | 8 方向移动，禁飞区边缘安全检查 |
-| 模拟飞行 | 可视化无人机沿路径飞行，经过动作格子弹窗提示 |
-| 任务导出 | 生成 Python 任务脚本 + Shell 启动脚本 + JSON 配置，直接部署到机载电脑 |
-| 遥测监控 | MAVLink UDP 实时接收位置 / 飞行状态 / ROS 节点状态 |
-| 方案管理 | JSON 格式保存 / 加载完整任务方案 |
-| Material You | Google Material Design 3 风格 UI，紫色主题 |
+| 模拟飞行 | 可视化无人机沿路径飞行，动作弹窗提示 |
+| 任务导出 | Python 脚本 + Shell 启动脚本 + JSON 配置 |
+| 遥测监控 | MAVLink UDP 实时位置 / 状态 / 节点信息 |
+| 摄像头监控 | HTTP MJPEG 视频流实时显示 |
+| 3D 点云 | OpenGL 渲染，支持轨道 / 第一人称双模式 |
+| 3D 点云预览 | pyqtgraph.opengl GPU 渲染 |
+| 远程管理 | SSH 连接 OrangePi，一键启动 / 停止服务 |
+| 任务测试 | 不起飞测试脚本，验证任务逻辑 |
+| 仪表盘 | 系统实时监控（CPU / 内存 / 连接状态） |
 
 ## 快速启动
 
 ```bash
 # 安装依赖
-pip install PySide6 pymavlink python-tsp numpy
+pip install -r requirements.txt
 
 # 启动地面站
 cd mission_grid
@@ -56,24 +60,27 @@ B1  ·   ·   ·   ·   ·   ·   ·   ·   ★     row=0
 ## 项目结构
 
 ```
-mission_grid/
-├── app.py                      # 入口：python app.py
-├── requirements.txt            # Python 依赖
-├── mission_grid_app/           # 应用主包
-│   ├── main.py                 # QApplication 启动
-│   ├── main_window.py          # 主窗口（集成所有模块）
-│   ├── models.py               # 数据模型（GridConfig, CellAction）
-│   ├── grid_widget.py          # 网格可视化（QGraphicsView）
-│   ├── action_editor.py        # 动作编辑弹窗
-│   ├── main_task_editor.py     # 主线任务编辑弹窗
-│   ├── path_planner.py         # 路径规划（A* + TSP + 蛇形遍历）
-│   ├── code_generator.py       # 任务脚本代码生成器
-│   ├── telemetry.py            # MAVLink UDP 遥测
-│   ├── material_theme.py       # Material You 3 主题
-│   └── material_widgets.py     # Material 自定义组件
-│   └── README.md               # 模块详细文档
-└── README.md                   # 项目说明
+ticup/
+├── mission_grid/           # 地面站主项目
+│   ├── app.py              # 入口：python app.py
+│   ├── requirements.txt    # Python 依赖
+│   └── mission_grid_app/   # 应用主包
+├── TIdown/                 # 机载电脑文件镜像（只读参考）
+├── infomation/             # 厂家参考文档
+├── cominfo/                # 比赛信息
+├── AGENTS.md               # 项目开发指南
+├── COLLABORATION_GUIDE.md  # 协作开发指南
+└── README.md               # 本文件
 ```
+
+## 协作开发
+
+详见 [COLLABORATION_GUIDE.md](COLLABORATION_GUIDE.md)
+
+**分支策略**：
+- `master`: 稳定版本
+- `dev/moessif`: moessif 的开发分支
+- `dev/mori`: mori 的开发分支
 
 ## 生成的任务包
 
@@ -81,10 +88,10 @@ mission_grid/
 
 ```bash
 # SCP 传输到机载电脑
-scp -r mission_grid_YYYYMMDD_HHMMSS/ orangepi@10.118.249.217:/home/orangepi/
+scp -r mission_grid_YYYYMMDD_HHMMSS/ orangepi@<IP>:/home/orangepi/
 
 # SSH 登录并执行
-ssh orangepi@10.118.249.217
+ssh orangepi@<IP>
 cd /home/orangepi/mission_grid_YYYYMMDD_HHMMSS/
 chmod +x run_mission.sh
 ./run_mission.sh
@@ -93,21 +100,22 @@ chmod +x run_mission.sh
 ## 技术栈
 
 - **前端 UI**: PySide6 (Qt 6) + Material You 3 自定义主题
-- **路径规划**: A* / ARA* + python-tsp (DP/SA/LS) + 蛇形遍历
+- **路径规划**: A* / ARA* + python-tsp + 蛇形遍历
 - **通信协议**: MAVLink UDP (pymavlink)
+- **3D 渲染**: OpenGL + pyqtgraph.opengl
 - **机载接口**: uav_ctrl_tools.CtrlTools (ROS Noetic)
 - **SLAM**: FAST_LIO (ikd-Tree) + Livox MID360
 
-## 依赖
+## 版本历史
 
-| 库 | 版本 | 用途 |
-|----|------|------|
-| PySide6 | ≥ 6.5 | Qt UI 框架 |
-| pymavlink | ≥ 1.4 | MAVLink 通信 |
-| numpy | ≥ 1.24 | 距离矩阵计算 |
-| python-tsp | ≥ 0.4 | TSP 精确/启发式求解（可选） |
+| 版本 | 日期 | 主要更新 |
+|------|------|----------|
+| v1.5.0 | 2026-07-01 | 3D 点云预览、任务测试系统、摄像头工具 |
+| v1.3.1 | 2026-06-30 | 配置系统、网络扫描、Bug 修复 |
+| v1.3.0 | 2026-06-30 | 仪表盘、远程管理、摄像头、3D 点云 |
+| v1.0.0 | 2026-06-29 | 初始版本：网格编辑、路径规划、任务导出 |
 
 ## 开发团队
 
-- 地面站 UI 与路径规划
-- 机载控制与竞赛任务
+- **moessif**: 地面站 UI、路径规划、任务导出
+- **mori**: 协作开发
