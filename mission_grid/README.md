@@ -174,3 +174,40 @@ mission_grid_YYYYMMDD_HHMMSS/
 ## 日志
 
 运行日志保存在 `mission_grid/log/` 目录，每次运行生成一个日志文件，文件名格式：`mission_grid_YYYYMMDD_HHMMSS.log`
+
+## 协作开发
+
+### 分支策略
+
+```
+master (稳定版本)
+├── dev/mori (mori 的开发分支)
+└── dev/xxx (其他人的开发分支)
+```
+
+### 快速开始
+
+```bash
+# 克隆仓库
+git clone https://github.com/Moessif/mission_grid.git
+cd mission_grid
+
+# 切换到你的分支
+git checkout dev/mori
+
+# 安装依赖
+pip install -r requirements.txt
+
+# 运行程序
+python app.py
+```
+
+### 开发流程
+
+1. **每天开始前**: `git pull origin dev/mori`
+2. **开发过程中**: 小步提交，频繁推送
+3. **完成功能后**: 提 PR 合并到 master
+
+### 详细指南
+
+请查看项目根目录的 `COLLABORATION_GUIDE.md` 文件。
